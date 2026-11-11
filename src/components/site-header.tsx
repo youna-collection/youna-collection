@@ -7,7 +7,10 @@ import { MobileNav } from "./mobile-nav";
 
 export async function SiteHeader() {
   const categories = await getCategories();
-  const links = categories.map((category) => ({ href: `/collections/${category.slug}`, label: category.name }));
+  const links = [
+    { href: "/", label: "Accueil" },
+    ...categories.map((category) => ({ href: `/collections/${category.slug}`, label: category.name })),
+  ];
 
   return (
     <header className="sticky top-0 z-30 border-b border-sand bg-ivory/95 backdrop-blur">
@@ -19,7 +22,7 @@ export async function SiteHeader() {
 
         <Logo className="md:hidden" />
         <nav aria-label="Catégories" className="hidden md:block">
-          <ul className="flex items-center gap-8">
+          <ul className="flex items-center gap-5 lg:gap-8">
             {links.map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className="text-xs tracking-[0.25em] uppercase underline-offset-8 hover:underline">
