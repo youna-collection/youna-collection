@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* Couleurs en variables : l'admin les redéfinit pour son thème sombre (.admin-dark). */
+@theme {
+  --color-ivory: #f6f1e9;
+  --color-paper: #fbf9f5;
+  --color-photo: #f4f3f0;
+  --color-sand: #d9cfc0;
+  --color-ink: #1c1c1c;
+  --color-muted: #6b645a;
+  --color-danger: #9b2c1f;
+  --color-success: #3f6240;
+  /* Touches de couleur du tableau de bord admin. */
+  --color-gold: #a07a3c;
+  --color-sky: #3f6a8f;
+  --color-warning: #9a6512;
+  --color-chart: #a07a3c;
+}
+
+@theme inline {
+  --font-sans: var(--font-jost), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-ivory);
+  color: var(--color-ink);
+}
+
+/* Admin en mode sombre : mêmes noms de couleurs, valeurs inversées (texte clair sur fond brun-noir). */
+.admin-dark {
+  color-scheme: dark;
+  --color-ivory: #1e1c19;
+  --color-paper: #151412;
+  --color-photo: #2a2723;
+  --color-sand: #3b362f;
+  --color-ink: #efe9df;
+  --color-muted: #a59c8e;
+  --color-danger: #ef8a78;
+  --color-success: #8cc28c;
+  --color-white: #25221e;
+  --color-gold: #d9b26f;
+  --color-sky: #8fb6d9;
+  --color-warning: #e3b45c;
+  --color-chart: #d9b26f;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+body:has(.admin-dark) {
+  background: #151412;
+}
+
+/* Défilement horizontal sans barre visible (galeries, palette de couleurs). */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Pages légales : liens repérables dans le texte. */
+.legal a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
