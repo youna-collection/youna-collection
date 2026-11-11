@@ -239,6 +239,9 @@ Commandes → « Exporter pour la comptabilité (CSV) » : un mois ou une année
 
 ## Déploiement sur Netlify
 
-Le fichier `netlify.toml` contient déjà les réglages. Il reste à relier le dépôt GitHub au site Netlify et à saisir les variables ci-dessus dans **Site configuration > Environment variables**.
-
-Les sections *sauvegarde de la base* et *ajouter un produit* seront ajoutées avec les phases concernées.
+- Site Netlify **youna-collection** : https://youna-collection.netlify.app (mis en ligne le 11/11/2026, version de test : Stripe en mode test, `EMAIL_ALLOW_REAL=false`, invisible sur Google).
+- Le code est dans le dépôt GitHub **privé** `youna-collection/youna-collection`, relié au site : **chaque envoi (`git push`) sur la branche `main` reconstruit et remet le site en ligne automatiquement** (3 à 5 minutes). Les réglages de construction viennent de `netlify.toml`.
+- Les variables d'environnement sont dans **Site configuration > Environment variables** (copiées depuis `.env.local`, sauf `NEXT_PUBLIC_SITE_URL` = l'adresse Netlify). Après un changement de variable, relancer un déploiement depuis Netlify (« Trigger deploy »).
+- Ne pas construire avec `netlify deploy` depuis Windows : le module Next.js de Netlify a des bugs de chemins sous Windows (middleware). Toujours passer par GitHub.
+- Supabase > Authentication > URL Configuration : « Site URL » = l'adresse du site en ligne, et « Redirect URLs » doit contenir `https://youna-collection.netlify.app/**` (et `http://localhost:3000/**` pour les essais), sinon les liens « mot de passe oublié » et « lien de connexion » ne ramènent pas sur le site.
+- À faire avant l'ouverture : nom de domaine, webhook Stripe (`STRIPE_WEBHOOK_SECRET`), clés Stripe live, `RESEND_API_KEY` + domaine vérifié, `EMAIL_ALLOW_REAL=true`, retirer `robots: noindex` dans `src/app/layout.tsx`.
