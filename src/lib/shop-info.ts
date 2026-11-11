@@ -6,7 +6,7 @@ import { isSupabaseConfigured } from "./supabase/env";
 export const SHOP_INFO_TAG = "shop-info";
 
 /** Adresse de contact affichée tant que « E-mail affiché » n'est pas rempli dans Paramètres. */
-export const DEFAULT_CONTACT_EMAIL = "Younacollection@outlook.fr";
+export const DEFAULT_CONTACT_EMAIL = "youna.hyj83@gmail.com";
 
 /** Ce que le site public a le droit d'afficher (mentions légales, bas de page) : rien d'autre. */
 export type ShopInfo = {
@@ -43,13 +43,18 @@ export function toShopInfo(row: Row | null): ShopInfo {
   };
 }
 
-/** Lu au plus une fois par heure, et aussitôt après un enregistrement dans Paramètres. */
-export const getShopInfo = unstable_cache(
-  async (): Promise<ShopInfo> => {
-    if (!isSupabaseConfigured) return toShopInfo(null);
+/** Ligne des réglages, lue au plus une fois par heure, et aussitôt après un enregistrement dans Paramètres. */
+const getSettingsRow = unstable_cache(
+  async (): Promise<Row | null> => {
+    if (!isSupabaseConfigured) return null;
     const { data } = await createAdminClient().from("shop_settings").select("*").eq("id", 1).maybeSingle<Row>();
-    return toShopInfo(data);
+    return data;
   },
-  ["shop-info"],
+  ["shop-settings-row"],
   { tags: [SHOP_INFO_TAG], revalidate: 3600 },
 );
+
+// Mise en forme hors du cache : un changement de valeur par défaut (adresse de contact…) s'applique tout de suite.
+export async function getShopInfo(): Promise<ShopInfo> {
+  return toShopInfo(await getSettingsRow());
+}
