@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Jost } from "next/font/google";
+import { Cormorant_Garamond, Jost } from "next/font/google";
 import "./globals.css";
 
 const jost = Jost({
   variable: "--font-jost",
   subsets: ["latin"],
+});
+
+// Police élégante de la bande « The beauty of modesty » (italique seulement, pour rester léger).
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: "500",
+  style: "italic",
 });
 
 export const metadata: Metadata = {
@@ -24,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${jost.variable} h-full antialiased`}>
+    <html lang="fr" className={`${jost.variable} ${cormorant.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );

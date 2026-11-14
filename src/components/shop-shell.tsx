@@ -1,7 +1,8 @@
+import { AnnouncementBar } from "./announcement-bar";
 import { SiteFooter } from "./site-footer";
 import { SiteHeader } from "./site-header";
 
-/** Habillage de la boutique : lien d'évitement, en-tête et pied de page. */
+/** Habillage de la boutique : lien d'évitement, bande « The beauty of modesty », en-tête et pied de page. */
 export function ShopShell({ children, banner }: { children: React.ReactNode; banner?: React.ReactNode }) {
   return (
     <>
@@ -12,6 +13,7 @@ export function ShopShell({ children, banner }: { children: React.ReactNode; ban
         Aller au contenu
       </a>
       {banner}
+      <AnnouncementBar />
       <SiteHeader />
       <div id="contenu" className="flex flex-1 flex-col">
         {children}
