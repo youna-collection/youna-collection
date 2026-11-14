@@ -124,24 +124,41 @@ const heroPath = z
   .regex(/^home\/[a-f0-9]{16}\.(webp|jpg)$/)
   .nullable();
 
-/** Photo de la page d'accueil : nouvelle photo déjà envoyée dans le stockage, ou null pour revenir aux photos des produits. */
-export async function setHomeHero(path: string | null): Promise<SettingsState> {
+const HERO_COLUMNS = { desktop: "home_hero_path", mobile: "home_hero_mobile_path" } as const;
+export type HeroSlot = keyof typeof HERO_COLUMNS;
+
+/** Photo d'accueil (ordinateur ou téléphone) : nouvelle photo déjà envoyée dans le stockage, ou null pour la retirer. */
+export async function setHomeHero(slot: HeroSlot, path: string | null): Promise<SettingsState> {
   await requireAdmin();
+  const column = HERO_COLUMNS[slot];
   const parsed = heroPath.safeParse(path);
-  if (!parsed.success) return { status: "error", message: "Photo invalide." };
+  if (!column || !parsed.success) return { status: "error", message: "Photo invalide." };
   const supabase = await createClient();
-  const { data: before } = await supabase.from("shop_settings").select("home_hero_path").eq("id", 1).maybeSingle<{ home_hero_path: string | null }>();
-  const { error } = await supabase.from("shop_settings").update({ home_hero_path: parsed.data }).eq("id", 1);
+  const { data: before } = await supabase.from("shop_settings").select(column).eq("id", 1).maybeSingle<Record<string, string | null>>();
+  const { error } = await supabase.from("shop_settings").update({ [column]: parsed.data }).eq("id", 1);
   if (error) return { status: "error", message: "La photo n'a pas pu être enregistrée." };
   // L'ancienne photo ne sert plus à rien.
-  const old = before?.home_hero_path;
+  const old = before?.[column];
   if (old && old !== parsed.data) await supabase.storage.from("product-images").remove([old]);
+  updateTag(SHOP_INFO_TAG);
+  revalidatePath("/");
+  revalidatePath("/admin/parametres");
+  return { status: "success", message: parsed.data ? "Photo enregistrée." : "Photo retirée." };
+}
+
+/** Afficher ou non les photos d'accueil (on peut les préparer avant de les montrer). */
+export async function setHomeHeroVisible(visible: boolean): Promise<SettingsState> {
+  await requireAdmin();
+  if (typeof visible !== "boolean") return { status: "error", message: "Demande invalide." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("shop_settings").update({ home_hero_visible: visible }).eq("id", 1);
+  if (error) return { status: "error", message: "Le changement n'a pas pu être enregistré." };
   updateTag(SHOP_INFO_TAG);
   revalidatePath("/");
   revalidatePath("/admin/parametres");
   return {
     status: "success",
-    message: parsed.data ? "Photo enregistrée : elle s'affiche sur la page d'accueil." : "Photo retirée : l'accueil montre de nouveau les photos des produits.",
+    message: visible ? "Les photos s'affichent sur la page d'accueil." : "Photos cachées : l'accueil montre les photos des produits.",
   };
 }
 

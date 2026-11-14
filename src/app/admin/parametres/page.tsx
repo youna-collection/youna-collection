@@ -23,7 +23,7 @@ function Field({
   hint,
   required,
   ...props
-}: { name: Exclude<keyof ShopSettings, "maintenance_enabled" | "cart_reminders_enabled" | "cart_reminder_second" | "checkout_login_required" | "home_hero_path">; label: string; settings: ShopSettings | null; hint?: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: { name: Exclude<keyof ShopSettings, "maintenance_enabled" | "cart_reminders_enabled" | "cart_reminder_second" | "checkout_login_required" | "home_hero_path" | "home_hero_mobile_path" | "home_hero_visible">; label: string; settings: ShopSettings | null; hint?: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-sm text-muted">
@@ -53,8 +53,12 @@ export default async function SettingsPage() {
       </section>
 
       <section id="accueil" className="flex scroll-mt-24 flex-col gap-3 border border-sand bg-ivory p-4">
-        <h2 className="text-lg">Photo de la page d&apos;accueil</h2>
-        <HomeHeroSettings heroUrl={settings?.home_hero_path ? productImageUrl(settings.home_hero_path) : null} />
+        <h2 className="text-lg">Photos de la page d&apos;accueil</h2>
+        <HomeHeroSettings
+          desktopUrl={settings?.home_hero_path ? productImageUrl(settings.home_hero_path) : null}
+          mobileUrl={settings?.home_hero_mobile_path ? productImageUrl(settings.home_hero_mobile_path) : null}
+          visible={settings?.home_hero_visible ?? true}
+        />
       </section>
 
       <section id="commande" className="flex scroll-mt-24 flex-col gap-3 border border-sand bg-ivory p-4">

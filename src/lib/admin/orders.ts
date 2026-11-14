@@ -198,6 +198,8 @@ export type ShopSettings = {
   mediator_name: string | null;
   mediator_url: string | null;
   home_hero_path: string | null;
+  home_hero_mobile_path: string | null;
+  home_hero_visible: boolean;
   checkout_login_required: boolean;
 };
 
@@ -206,7 +208,7 @@ export async function getShopSettings(): Promise<ShopSettings | null> {
   const { data } = await supabase
     .from("shop_settings")
     .select(
-      "legal_name, trade_name, legal_form, siret, vat_number, vat_mention, address_line1, address_line2, postal_code, city, country, email, phone, invoice_footer, maintenance_enabled, maintenance_title, maintenance_message, cart_reminders_enabled, cart_reminder_second, instagram_url, tiktok_url, snapchat_url, mediator_name, mediator_url, home_hero_path, checkout_login_required",
+      "legal_name, trade_name, legal_form, siret, vat_number, vat_mention, address_line1, address_line2, postal_code, city, country, email, phone, invoice_footer, maintenance_enabled, maintenance_title, maintenance_message, cart_reminders_enabled, cart_reminder_second, instagram_url, tiktok_url, snapchat_url, mediator_name, mediator_url, home_hero_path, home_hero_mobile_path, home_hero_visible, checkout_login_required",
     )
     .eq("id", 1)
     .maybeSingle<ShopSettings>();

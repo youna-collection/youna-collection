@@ -1,8 +1,8 @@
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product-card";
 import { getCategories, getProducts, inCategory, productImageUrl } from "@/lib/catalog";
-import { getHomeHeroPath } from "@/lib/shop-info";
+import { getHomeHero } from "@/lib/shop-info";
 import { defaultVariant, imagesForVariant, isInStock, type Product } from "@/lib/product";
 
 export const revalidate = 300;
@@ -21,8 +21,22 @@ function spread<T>(items: T[], count: number): T[] {
   return Array.from({ length: count }, (_, i) => items[Math.round((i * (items.length - 1)) / (count - 1))]);
 }
 
+/** Une seule photo téléchargée : celle du téléphone, ou celle de l'ordinateur à partir de 768 px de large. */
+function HeroPicture({ desktop, mobile }: { desktop: string; mobile: string }) {
+  const common = { alt: "", fill: true, sizes: "100vw", fetchPriority: "high" as const, loading: "eager" as const };
+  const { props: desktopProps } = getImageProps({ ...common, src: desktop });
+  const { props: mobileProps } = getImageProps({ ...common, src: mobile });
+  return (
+    <picture>
+      <source media="(min-width: 768px)" srcSet={desktopProps.srcSet} sizes="100vw" />
+      {/* Image décorative (alt vide), srcSet optimisé par next/image. */}
+      <img {...mobileProps} alt="" className="object-cover" />
+    </picture>
+  );
+}
+
 export default async function HomePage() {
-  const [categories, products, heroPath] = await Promise.all([getCategories(), getProducts(), getHomeHeroPath()]);
+  const [categories, products, hero] = await Promise.all([getCategories(), getProducts(), getHomeHero()]);
 
   // La palette mise en avant : le produit qui a le plus de couleurs.
   const palette = [...products].sort((a, b) => colorTiles(b).length - colorTiles(a).length)[0];
@@ -41,10 +55,10 @@ export default async function HomePage() {
   return (
     <main>
       <section className="border-b border-sand bg-paper">
-        {heroPath ? (
-          // Photo choisie par l'admin (Paramètres > Photo de la page d'accueil).
-          <div className="relative aspect-[4/5] w-full bg-photo sm:aspect-[16/9] lg:aspect-[21/9]">
-            <Image src={productImageUrl(heroPath)} alt="" fill priority sizes="100vw" className="object-cover" />
+        {hero ? (
+          // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 12:5 sur ordinateur.
+          <div className="relative aspect-[4/5] w-full bg-photo md:aspect-[12/5]">
+            <HeroPicture desktop={productImageUrl(hero.desktop)} mobile={productImageUrl(hero.mobile)} />
           </div>
         ) : heroTiles.length >= 3 ? (
           <div className={`grid grid-cols-3 ${heroTiles.length >= 5 ? "md:grid-cols-5" : ""}`} aria-hidden>

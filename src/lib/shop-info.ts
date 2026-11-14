@@ -59,9 +59,17 @@ export async function getShopInfo(): Promise<ShopInfo> {
   return toShopInfo(await getSettingsRow());
 }
 
-/** Photo de la page d'accueil choisie dans Paramètres (chemin dans le stockage), sinon null. */
-export async function getHomeHeroPath(): Promise<string | null> {
-  return (await getSettingsRow())?.home_hero_path ?? null;
+/**
+ * Photos de la page d'accueil choisies dans Paramètres (chemins dans le stockage), sinon null.
+ * S'il n'y en a qu'une, elle sert sur ordinateur comme sur téléphone.
+ */
+export async function getHomeHero(): Promise<{ desktop: string; mobile: string } | null> {
+  const row = (await getSettingsRow()) as Record<string, unknown> | null;
+  if (!row || row.home_hero_visible === false) return null;
+  const desktop = typeof row.home_hero_path === "string" ? row.home_hero_path : null;
+  const mobile = typeof row.home_hero_mobile_path === "string" ? row.home_hero_mobile_path : null;
+  if (!desktop && !mobile) return null;
+  return { desktop: (desktop ?? mobile)!, mobile: (mobile ?? desktop)! };
 }
 
 /** Faut-il un compte pour commander ? (case de Paramètres ; non par défaut) */
