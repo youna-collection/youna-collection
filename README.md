@@ -113,7 +113,8 @@ Ce qu'il faut savoir :
 | `STRIPE_SECRET_KEY` | Stripe, Développeurs > Clés API. **Secrète**. `sk_test_...` jusqu'au lancement | Phase 3 |
 | `STRIPE_WEBHOOK_SECRET` | Stripe, Développeurs > Webhooks (voir plus bas). **Secrète** | Phase 3, en ligne |
 | `STRIPE_ALLOW_LIVE` | `true` seulement au lancement, avec la clé `sk_live_...` | Phase 7 |
-| `NEXT_PUBLIC_MONDIAL_RELAY_BRAND` | Code enseigne Mondial Relay (`BDTEST` pour les essais) | Phase 3 |
+| `NEXT_PUBLIC_SENDCLOUD_PUBLIC_KEY` | Clé publique Sendcloud (carte des points relais) | Envois |
+| `SENDCLOUD_SECRET_KEY` | Clé secrète Sendcloud (étiquettes, vérification des points relais) — serveur seulement | Envois |
 | `RESEND_API_KEY` | Resend, API Keys (`re_...`). **Secrète** | Phase 6 |
 | `EMAIL_FROM` | Expéditeur. Sans domaine : `Youna Collection <onboarding@resend.dev>` | Phase 6 |
 | `SHOP_EMAIL` | Adresse de la boutique : alertes, réponses des clientes, tous les e-mails en mode essai | Phase 6 |
@@ -148,6 +149,18 @@ Ce qu'il faut savoir :
 - **Remboursement** (`record_refund`) : total ou partiel, via Stripe (remboursé sur la carte, clé d'idempotence : un nouvel essai ne rembourse jamais deux fois) ou « rendu en main propre ». Les articles choisis sont remis en stock (voiles des bouquets compris). Tout remboursé avant l'envoi → « Annulée », après → « Remboursée ».
 - **Factures** (`issue_invoice`) : numérotation continue (F000001, avoirs A000002…), contenu figé, impossibles à modifier ou supprimer. Créées à la demande (admin ou cliente depuis son compte, `/factures/commande/[n°]` en POST) ; un avoir est créé à chaque remboursement. Rien n'est émis tant que **Paramètres** (nom, SIRET, adresse, mention TVA) n'est pas rempli ; un aperçu PDF est disponible dans Paramètres.
 - Migrations : `20261114100000_orders_admin.sql`, `20261114100100_service_role_grants.sql`. PDF dessinés avec `pdf-lib` (polices standard).
+
+## Envois avec Sendcloud
+
+Pas besoin de contrat Mondial Relay ou La Poste : les étiquettes passent par le compte Sendcloud, avec ses tarifs. Migration : `20261122100000_sendcloud.sql`.
+
+- **Réglages Sendcloud** (une fois) : adresse d'expédition, informations de facturation et moyen de paiement ; transporteurs Mondial Relay et Colissimo activés ; dans **Réglages → Intégrations**, l'intégration « Sendcloud API » (« Site Youna ») avec les points relais Mondial Relay activés. Les deux clés vont dans `.env.local` (et dans Netlify à la mise en ligne).
+- **Au paiement** : la cliente tape son code postal puis choisit son point relais sur la carte Sendcloud. Le serveur relit ce point chez Sendcloud avant de créer la commande (adresse officielle, point toujours ouvert).
+- **Dans la fiche commande** : « Créer l'étiquette » (avec confirmation, car Sendcloud la facture) choisit l'offre la moins chère du transporteur (point relais, consigne ou domicile, sans signature), puis enregistre le numéro et le lien de suivi. « Imprimer l'étiquette (PDF) » la récupère chez Sendcloud. « Annuler l'étiquette » est possible tant que la commande n'est pas marquée expédiée.
+- Ensuite, « Marquer comme expédiée » envoie à la cliente l'e-mail avec le suivi, comme avant.
+- Les frais de port payés par la cliente restent ceux réglés dans l'admin (ils ne viennent pas de Sendcloud).
+- Retrait à Avenue 83 et commandes de l'ancien site Shopify : pas d'étiquette.
+- **À faire à la mise en ligne** : mise à jour automatique des statuts « Expédiée » et « Livrée » par webhook Sendcloud (adresse du site nécessaire).
 
 ## Codes promo, clientes, statistiques et gel (admin)
 

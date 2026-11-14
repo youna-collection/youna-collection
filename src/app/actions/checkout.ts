@@ -8,6 +8,7 @@ import { getCart } from "@/lib/cart";
 import { buildSnapshot, type ShippingChoice } from "@/lib/cart-rules";
 import { getShippingMethods } from "@/lib/catalog";
 import { applyPromo, normalizePromoCode, type Promo, promoError } from "@/lib/promo";
+import { getServicePoint, isSendcloudConfigured } from "@/lib/sendcloud";
 import { quote } from "@/lib/shipping";
 import { getShopStatus, MAINTENANCE_MESSAGE } from "@/lib/shop-status";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
@@ -88,16 +89,17 @@ export async function startCheckout(_: ActionState, formData: FormData): Promise
     } catch {
       return fail("Choisissez votre point relais sur la carte.");
     }
-    if (relay.country !== input.country) return fail("Le point relais doit être dans le pays choisi.");
-    relayPoint = {
-      id: relay.id,
-      name: relay.name,
-      address1: relay.address1,
-      address2: relay.address2,
-      postal_code: relay.postalCode,
-      city: relay.city,
-      country: relay.country,
-    };
+    // Le point est relu chez Sendcloud : on garde son adresse officielle, pas celle envoyée par le navigateur.
+    if (!isSendcloudConfigured) return fail("Le choix du point relais n'est pas encore disponible. Choisissez un autre mode de livraison.");
+    let point: Awaited<ReturnType<typeof getServicePoint>>;
+    try {
+      point = await getServicePoint(relay.id);
+    } catch {
+      return fail("Le point relais n'a pas pu être vérifié. Réessayez dans un instant.");
+    }
+    if (!point || point.carrier !== "mondial_relay") return fail("Ce point relais n'est plus disponible. Choisissez-en un autre.");
+    if (point.country !== input.country) return fail("Le point relais doit être dans le pays choisi.");
+    relayPoint = { ...point };
   }
 
   const shipping: ShippingChoice = {

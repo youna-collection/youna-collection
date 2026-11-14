@@ -84,6 +84,7 @@ export default async function PrivacyPage() {
             "Netlify (hébergement du site) ;",
             "Stripe (paiement en ligne) ;",
             "Resend (envoi des e-mails liés à votre commande) ;",
+            "Sendcloud (choix du point relais et étiquettes d'expédition) ;",
             "Mondial Relay et La Poste / Colissimo (livraison de votre colis).",
           ]}
         />

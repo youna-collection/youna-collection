@@ -115,6 +115,10 @@ export type AdminOrder = AdminOrderRow & {
   billing_address: Address;
   tracking_number: string | null;
   tracking_url: string | null;
+  sendcloud_shipment_id: string | null;
+  sendcloud_parcel_id: string | null;
+  shipping_option_code: string | null;
+  label_requested_at: string | null;
   stripe_payment_intent_id: string | null;
   payment_method: string | null;
   paid_at: string | null;
@@ -143,7 +147,7 @@ export async function getAdminOrder(orderNumber: number): Promise<AdminOrder | n
     .select(
       `id, order_number, created_at, status, source, email, user_id, subtotal_cents, discount_cents, shipping_cents, total_cents,
        refunded_cents, promo_code, shipping_method_code, carrier, shipping_address, billing_address, relay_point,
-       tracking_number, tracking_url, stripe_payment_intent_id, payment_method, paid_at, shipped_at, delivered_at, cancelled_at,
+       tracking_number, tracking_url, sendcloud_shipment_id, sendcloud_parcel_id, shipping_option_code, label_requested_at, stripe_payment_intent_id, payment_method, paid_at, shipped_at, delivered_at, cancelled_at,
        items:order_items ( id, variant_id, product_name, variant_label, sku, unit_price_cents, quantity, line_total_cents,
                            components:order_item_components ( label, variant_id ) ),
        notes:order_notes ( id, body, created_at ),

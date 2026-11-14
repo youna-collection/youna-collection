@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmailList } from "@/components/admin/email-list";
+import { LabelPanel } from "@/components/admin/label-panel";
 import { NoteForm, RefundPanel, StatusPanel, type RefundableItem } from "@/components/admin/order-panels";
 import { listEmails } from "@/lib/admin/emails";
 import { listOrderTickets } from "@/lib/admin/support";
@@ -12,6 +13,7 @@ import { customerName, getAdminOrder, getShopSettings, sellerComplete, SOURCE_LA
 import { PAYMENT_LABELS } from "@/lib/admin/stock";
 import { formatPrice } from "@/lib/format";
 import { CARRIER_LABELS, documentNumber, ORDER_STATUS_LABELS, deliveryPostalCode, trackingLink } from "@/lib/order-display";
+import { isSendcloudConfigured } from "@/lib/sendcloud";
 import { COUNTRY_NAMES } from "@/lib/shipping";
 
 export const dynamic = "force-dynamic";
@@ -110,8 +112,19 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
+          {isWeb && isSendcloudConfigured && (order.carrier === "mondial_relay" || order.carrier === "colissimo") ? (
+            <LabelPanel
+              orderId={order.id}
+              orderNumber={order.order_number}
+              carrierLabel={CARRIER_LABELS[order.carrier] ?? order.carrier}
+              hasLabel={Boolean(order.sendcloud_parcel_id)}
+              canChange={order.status === "paid" || order.status === "preparing"}
+            />
+          ) : null}
+
           {isWeb || (isShopify && order.status !== "delivered") ? (
             <StatusPanel
+              key={`${order.status}-${order.tracking_number ?? ""}`}
               orderId={order.id}
               status={order.status}
               carrierLabel={order.carrier ? (CARRIER_LABELS[order.carrier] ?? null) : null}
@@ -247,7 +260,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
               <p>{order.carrier ? (CARRIER_LABELS[order.carrier] ?? order.carrier) : "—"}</p>
               {relay ? (
                 <p className="text-muted">
-                  Point relais {relay.id ? `n° ${relay.id}` : ""} : {relay.name}
+                  Point relais {relay.carrier_id || relay.id ? `n° ${relay.carrier_id || relay.id}` : ""} : {relay.name}
                   <br />
                   {[relay.address1, relay.address2].filter(Boolean).join(", ")}
                   <br />

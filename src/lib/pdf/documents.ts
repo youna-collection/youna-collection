@@ -347,7 +347,7 @@ export async function renderPackingSlips(orders: PackingOrder[], shopName = "You
     const shipping: string[] = [order.carrier ? (CARRIER_LABELS[order.carrier] ?? order.carrier) : "—"];
     if (order.relay_point) {
       const r = order.relay_point;
-      shipping.push(`Point relais : ${r.name ?? ""}${r.id ? ` (n° ${r.id})` : ""}`, [r.address1, r.address2].filter(Boolean).join(", "), `${r.postal_code ?? ""} ${r.city ?? ""}`);
+      shipping.push(`Point relais : ${r.name ?? ""}${r.carrier_id || r.id ? ` (n° ${r.carrier_id || r.id})` : ""}`, [r.address1, r.address2].filter(Boolean).join(", "), `${r.postal_code ?? ""} ${r.city ?? ""}`);
     } else if (a.line1) {
       shipping.push(name, [a.line1, a.line2].filter(Boolean).join(", "), `${a.postal_code ?? ""} ${a.city ?? ""} ${a.country && a.country !== "FR" ? (COUNTRY_NAMES[a.country] ?? a.country) : ""}`);
     }

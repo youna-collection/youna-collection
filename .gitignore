@@ -57,3 +57,6 @@ next-env.d.ts
 
 # Réglages locaux de Claude Code
 /.claude/
+
+# Codes de secours personnels : ne jamais publier
+/stripe/
