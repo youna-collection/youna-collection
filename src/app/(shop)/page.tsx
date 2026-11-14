@@ -16,6 +16,15 @@ export const revalidate = 300;
  */
 const HOME_VIDEO: string | null = "/videos/accueil.mp4";
 
+/** Sur ordinateur, à droite de la vidéo : l'annonce écrite (image de Youna, police manuscrite). null pour l'enlever. */
+const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: number; href: string } | null = {
+  image: "/images/new-drop-liquid-silk-signature.png",
+  alt: "New Drop : Liquid Silk Signature",
+  width: 1089,
+  height: 385,
+  href: "/collections/voiles?modele=liquid-silk-signature",
+};
+
 /** Les couleurs d'un produit qui ont leur propre photo. */
 function colorTiles(product: Product) {
   return product.variants
@@ -68,7 +77,22 @@ export default async function HomePage() {
       <section className="border-b border-sand bg-paper">
         {HOME_VIDEO ? (
           // Hauteur de l'écran moins la bande et le menu (100 px sur téléphone, 115 px sur ordinateur), jamais moins de 420 px.
-          <LoopVideo src={HOME_VIDEO} centerOnWide label="Voiles Youna Collection en mouvement" className="h-[calc(100svh-100px)] min-h-[420px] w-full md:h-[calc(100svh-115px)]" />
+          // Téléphone : la vidéo seule, plein cadre. Ordinateur : vidéo à gauche, annonce écrite à droite, sur fond blanc.
+          <div className="h-[calc(100svh-100px)] min-h-[420px] w-full md:grid md:h-[calc(100svh-115px)] md:grid-cols-2 md:bg-white">
+            <LoopVideo src={HOME_VIDEO} centerOnWide label="Voiles Youna Collection en mouvement" className="size-full" />
+            {HOME_ANNOUNCEMENT ? (
+              <Link href={HOME_ANNOUNCEMENT.href} className="hidden items-center justify-center px-10 md:flex lg:px-16">
+                <Image
+                  src={HOME_ANNOUNCEMENT.image}
+                  alt={HOME_ANNOUNCEMENT.alt}
+                  width={HOME_ANNOUNCEMENT.width}
+                  height={HOME_ANNOUNCEMENT.height}
+                  sizes="40vw"
+                  className="h-auto w-full max-w-lg"
+                />
+              </Link>
+            ) : null}
+          </div>
         ) : hero ? (
           // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 16:9 sur ordinateur.
           <div className="relative aspect-[4/5] w-full bg-photo md:aspect-[16/9]">
