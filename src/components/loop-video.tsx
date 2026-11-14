@@ -4,10 +4,24 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * Courte vidéo muette qui tourne en boucle, avec un bouton pause (obligatoire pour une animation automatique).
- * Si la visiteuse a demandé moins d'animations, la vidéo démarre en pause.
- * `media` : la vidéo n'est téléchargée que si l'écran correspond (ex. téléphone seulement).
+ * Si la visiteuse a demandé moins d'animations, la vidéo reste en pause.
+ * `centerOnWide` : sur écran large, la vidéo (verticale) est montrée entière au centre, sur fond blanc.
+ * Sur téléphone, elle remplit tout le cadre.
+ * `media` : la vidéo n'est téléchargée que si l'écran correspond.
  */
-export function LoopVideo({ src, label, media, className = "" }: { src: string; label: string; media?: string; className?: string }) {
+export function LoopVideo({
+  src,
+  label,
+  media,
+  centerOnWide = false,
+  className = "",
+}: {
+  src: string;
+  label: string;
+  media?: string;
+  centerOnWide?: boolean;
+  className?: string;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -27,8 +41,18 @@ export function LoopVideo({ src, label, media, className = "" }: { src: string; 
   }
 
   return (
-    <div className={`relative overflow-hidden bg-photo ${className}`}>
-      <video ref={video} muted loop playsInline preload="auto" aria-label={label} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} className="absolute inset-0 size-full object-cover" />
+    <div className={`relative overflow-hidden ${centerOnWide ? "bg-photo md:bg-white" : "bg-photo"} ${className}`}>
+      <video
+        ref={video}
+        muted
+        loop
+        playsInline
+        preload="auto"
+        aria-label={label}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        className={`absolute inset-0 size-full object-cover ${centerOnWide ? "md:object-contain" : ""}`}
+      />
       <button
         type="button"
         onClick={toggle}
