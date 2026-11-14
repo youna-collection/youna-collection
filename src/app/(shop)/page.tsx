@@ -10,10 +10,12 @@ import { isInStock, type Product } from "@/lib/product";
 export const revalidate = 300;
 
 /**
- * Vidéo d'accueil en test (format portrait 768 × 1344) : elle remplace la photo sur téléphone.
- * Sur ordinateur, la photo paysage reste (une vidéo verticale y serait coupée en bande étroite).
+ * Vidéo d'accueil en test (format portrait 768 × 1344) : elle remplace la photo sur téléphone uniquement
+ * (écran tactile étroit). Sur ordinateur, même fenêtre étroite ou zoomée, la photo paysage reste.
+ * Même condition que la variante CSS `phone:` de globals.css.
  */
 const HOME_VIDEO = "/videos/accueil.mp4";
+const PHONE = "(max-width: 767px) and (pointer: coarse)";
 /** Image vide de 1 pixel : sur téléphone, la photo d'ordinateur n'est pas téléchargée pour rien. */
 const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
@@ -31,14 +33,17 @@ function spread<T>(items: T[], count: number): T[] {
   return Array.from({ length: count }, (_, i) => items[Math.round((i * (items.length - 1)) / (count - 1))]);
 }
 
-/** Une seule photo téléchargée : celle du téléphone, ou celle de l'ordinateur à partir de 768 px de large. */
+/**
+ * Une seule photo téléchargée : celle de l'ordinateur à partir de 768 px de large, sinon celle du téléphone.
+ * Avec `mobile` à null (vidéo sur téléphone), la photo d'ordinateur sert sur tout ce qui n'est pas un téléphone.
+ */
 function HeroPicture({ desktop, mobile }: { desktop: string; mobile: string | null }) {
   const common = { alt: "", fill: true, sizes: "100vw", fetchPriority: "high" as const, loading: "eager" as const };
   const { props: desktopProps } = getImageProps({ ...common, src: desktop });
   const { props: mobileProps } = mobile ? getImageProps({ ...common, src: mobile }) : { props: { ...common, src: BLANK, fill: undefined } };
   return (
     <picture>
-      <source media="(min-width: 768px)" srcSet={desktopProps.srcSet} sizes="100vw" />
+      <source media={mobile ? "(min-width: 768px)" : "(min-width: 768px), (pointer: fine), (pointer: none)"} srcSet={desktopProps.srcSet} sizes="100vw" />
       {/* Image décorative (alt vide), srcSet optimisé par next/image. */}
       <img {...mobileProps} alt="" className="object-cover" />
     </picture>
@@ -68,15 +73,15 @@ export default async function HomePage() {
     <main>
       <section className="border-b border-sand bg-paper">
         {HOME_VIDEO ? (
-          <LoopVideo src={HOME_VIDEO} media="(max-width: 767px)" label="Voiles Youna Collection en mouvement" className="aspect-[4/7] w-full md:hidden" />
+          <LoopVideo src={HOME_VIDEO} media={PHONE} label="Voiles Youna Collection en mouvement" className="hidden aspect-[4/7] w-full phone:block" />
         ) : null}
         {hero ? (
           // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 16:9 sur ordinateur.
-          <div className={`relative w-full bg-photo md:aspect-[16/9] ${HOME_VIDEO ? "hidden md:block" : "aspect-[4/5]"}`}>
+          <div className={`relative w-full bg-photo md:aspect-[16/9] ${HOME_VIDEO ? "aspect-[16/9] phone:hidden" : "aspect-[4/5]"}`}>
             <HeroPicture desktop={productImageUrl(hero.desktop)} mobile={HOME_VIDEO ? null : productImageUrl(hero.mobile)} />
           </div>
         ) : heroTiles.length >= 3 ? (
-          <div className={`grid-cols-3 ${HOME_VIDEO ? "hidden md:grid" : "grid"} ${heroTiles.length >= 5 ? "md:grid-cols-5" : ""}`} aria-hidden>
+          <div className={`grid grid-cols-3 ${HOME_VIDEO ? "phone:hidden" : ""} ${heroTiles.length >= 5 ? "md:grid-cols-5" : ""}`} aria-hidden>
             {heroTiles.map(({ variant, image }, i) => (
               <div key={variant.id} className={`relative aspect-[2/3] bg-photo ${i >= 3 ? "hidden md:block" : ""}`}>
                 <Image src={image!.url} alt="" fill priority sizes="(min-width: 768px) 20vw, 34vw" className="object-cover" />

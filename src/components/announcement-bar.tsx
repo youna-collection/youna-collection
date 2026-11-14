@@ -9,22 +9,19 @@ function Phrases({ hidden }: { hidden?: boolean }) {
         <span
           key={i}
           aria-hidden={hidden || i > 0 || undefined}
-          className={`flex shrink-0 items-center gap-6 pr-6 md:gap-10 md:pr-10 ${hidden || i > 0 ? "marquee-copy" : ""}`}
+          className={`shrink-0 pr-16 md:pr-24 ${hidden || i > 0 ? "marquee-copy" : ""}`}
         >
-          <span>{PHRASE}</span>
-          <span aria-hidden className="text-[0.6rem] text-[#c9a96e]">
-            ✦
-          </span>
+          {PHRASE}
         </span>
       ))}
     </>
   );
 }
 
-/** Petite bande tout en haut de la boutique, qui défile lentement. */
+/** Petite bande tout en haut de la boutique, qui défile lentement : police du site, fond à peine plus foncé que la page. */
 export function AnnouncementBar() {
   return (
-    <div lang="en" className="marquee overflow-hidden bg-[#2b2520] py-1.5 font-display text-[0.95rem] font-medium text-[#eadcc3] italic md:text-base">
+    <div lang="en" className="marquee overflow-hidden border-b border-sand/60 bg-[#ede5d8] py-2 text-[0.7rem] tracking-[0.25em] text-ink uppercase">
       <div className="marquee-track" style={{ "--marquee-duration": "60s" } as React.CSSProperties}>
         <Phrases />
         <Phrases hidden />

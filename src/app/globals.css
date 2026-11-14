@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Téléphone : écran étroit ET tactile (un ordinateur à fenêtre étroite ou zoomée n'en est pas un). */
+@custom-variant phone (@media (max-width: 767px) and (pointer: coarse));
+
 /* Couleurs en variables : l'admin les redéfinit pour son thème sombre (.admin-dark). */
 @theme {
   --color-ivory: #f6f1e9;
