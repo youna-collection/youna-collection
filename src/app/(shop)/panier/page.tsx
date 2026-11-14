@@ -76,7 +76,7 @@ export default async function CartPage() {
             </div>
             <p className="text-sm text-muted">
               Livraison calculée à l&apos;étape suivante
-              {Number.isFinite(cheapest) ? `, à partir de ${formatPrice(cheapest)}` : ""}. Retrait gratuit à Avenue 83.
+              {Number.isFinite(cheapest) ? `, à partir de ${formatPrice(cheapest)}` : ""}. Click &amp; collect gratuit.
             </p>
             {cart.canCheckout ? (
               <Link href="/commande" className="flex min-h-12 items-center justify-center bg-ink px-6 text-sm tracking-widest text-ivory uppercase">

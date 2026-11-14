@@ -56,7 +56,7 @@ function deliveryLines(o: EmailOrder): string[] {
   const a = o.shipping_address ?? {};
   const r = o.relay_point;
   const name = [a.first_name, a.last_name].filter(Boolean).join(" ");
-  if (o.carrier === "pickup") return ["Retrait à Avenue 83", "Nous vous contactons pour convenir du retrait."];
+  if (o.carrier === "pickup") return ["Click & collect", "Nous vous contacterons pour convenir du retrait."];
   if (r) {
     return [`Point relais Mondial Relay : ${r.name}`, [r.address1, r.address2].filter(Boolean).join(", "), `${r.postal_code} ${r.city}`, `Pour : ${name}`];
   }
@@ -117,7 +117,7 @@ export function orderShippedEmail(o: EmailOrder): RenderedEmail {
   const link = trackingLink(o.carrier, o.tracking_number, o.tracking_url, deliveryPostalCode(o.relay_point, o.shipping_address));
   const subject = pickup ? `Votre commande n° ${o.order_number} est prête` : `Votre commande n° ${o.order_number} est en route`;
   const intro = pickup
-    ? `Votre commande <strong>n° ${o.order_number}</strong> est prête. Nous vous contactons pour convenir du retrait à Avenue 83.`
+    ? `Votre commande <strong>n° ${o.order_number}</strong> est prête. Nous vous contacterons pour convenir du retrait.`
     : `Bonne nouvelle : votre commande <strong>n° ${o.order_number}</strong> vient d'être confiée à ${escapeHtml(CARRIER_LABELS[o.carrier ?? ""] ?? "notre transporteur")}.`;
   const tracking = o.tracking_number ? `Numéro de suivi : ${o.tracking_number}` : null;
   const body = [

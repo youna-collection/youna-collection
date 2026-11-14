@@ -159,7 +159,7 @@ Pas besoin de contrat Mondial Relay ou La Poste : les étiquettes passent par le
 - **Dans la fiche commande** : « Créer l'étiquette » (avec confirmation, car Sendcloud la facture) choisit l'offre la moins chère du transporteur (point relais, consigne ou domicile, sans signature), puis enregistre le numéro et le lien de suivi. « Imprimer l'étiquette (PDF) » la récupère chez Sendcloud. « Annuler l'étiquette » est possible tant que la commande n'est pas marquée expédiée.
 - Ensuite, « Marquer comme expédiée » envoie à la cliente l'e-mail avec le suivi, comme avant.
 - Les frais de port payés par la cliente restent ceux réglés dans l'admin (ils ne viennent pas de Sendcloud).
-- Retrait à Avenue 83 et commandes de l'ancien site Shopify : pas d'étiquette.
+- Click & collect (retrait) et commandes de l'ancien site Shopify : pas d'étiquette.
 - **À faire à la mise en ligne** : mise à jour automatique des statuts « Expédiée » et « Livrée » par webhook Sendcloud (adresse du site nécessaire).
 
 ## Codes promo, clientes, statistiques et gel (admin)

@@ -17,7 +17,7 @@ export const ORDER_STEPS: OrderStatus[] = ["paid", "preparing", "shipped", "deli
 export const CARRIER_LABELS: Record<string, string> = {
   mondial_relay: "Mondial Relay",
   colissimo: "Colissimo",
-  pickup: "Retrait à Avenue 83",
+  pickup: "Click & collect",
 };
 
 /** Lien de suivi : celui saisi par l'admin, sinon celui du transporteur quand il ne dépend que du numéro. */
