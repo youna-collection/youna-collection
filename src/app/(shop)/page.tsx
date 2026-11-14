@@ -12,17 +12,21 @@ export const revalidate = 300;
 /**
  * Vidéo d'accueil en test (format portrait 768 × 1344), à la place des photos d'accueil.
  * Elle remplit l'écran sous le menu : plein cadre sur téléphone ; sur ordinateur, au centre,
- * sur fond blanc. Mettre null pour revenir aux photos.
+ * sur le fond beige du site. Mettre null pour revenir aux photos.
  */
 const HOME_VIDEO: string | null = "/videos/accueil.mp4";
 
-/** Sur ordinateur, à droite de la vidéo : l'annonce écrite (image de Youna, police manuscrite). null pour l'enlever. */
-const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: number; href: string } | null = {
+/**
+ * Sur ordinateur, à droite de la vidéo : l'annonce écrite (image de Youna, police manuscrite, fond transparent).
+ * Le modèle annoncé passe aussi en premier dans les bandes de couleurs. null pour l'enlever.
+ */
+const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: number; href: string; productSlug: string } | null = {
   image: "/images/new-drop-liquid-silk-signature.png",
   alt: "New Drop : Liquid Silk Signature",
   width: 1089,
   height: 385,
   href: "/collections/voiles?modele=liquid-silk-signature",
+  productSlug: "liquid-silk-signature",
 };
 
 /** Les couleurs d'un produit qui ont leur propre photo. */
@@ -60,11 +64,12 @@ export default async function HomePage() {
   const palette = [...products].sort((a, b) => colorTiles(b).length - colorTiles(a).length)[0];
   const heroTiles = spread(palette ? colorTiles(palette) : [], 5);
 
-  // Une rangée qui défile par modèle de voile (Liquid Jersey, Liquid Silk Signature…), dès qu'il a des photos de couleurs.
+  // Une rangée qui défile par modèle de voile, dès qu'il a des photos de couleurs ; le modèle annoncé (New Drop) en premier.
   const voileRows = products
     .filter((product) => inCategory(product, "voiles"))
     .map((product) => ({ product, tiles: colorTiles(product) }))
-    .filter((row) => row.tiles.length > 0);
+    .filter((row) => row.tiles.length > 0)
+    .sort((a, b) => Number(b.product.slug === HOME_ANNOUNCEMENT?.productSlug) - Number(a.product.slug === HOME_ANNOUNCEMENT?.productSlug));
 
   // Puis les vêtements, et l'espace bouquets en dernier.
   const clothes = products.filter((product) => inCategory(product, "jupes"));
@@ -78,7 +83,7 @@ export default async function HomePage() {
         {HOME_VIDEO ? (
           // Hauteur de l'écran moins la bande et le menu (100 px sur téléphone, 115 px sur ordinateur), jamais moins de 420 px.
           // Téléphone : la vidéo seule, plein cadre. Ordinateur : vidéo à gauche, annonce écrite à droite, sur fond blanc.
-          <div className="h-[calc(100svh-100px)] min-h-[420px] w-full md:grid md:h-[calc(100svh-115px)] md:grid-cols-2 md:bg-white">
+          <div className="h-[calc(100svh-100px)] min-h-[420px] w-full md:grid md:h-[calc(100svh-115px)] md:grid-cols-2 md:bg-ivory">
             <LoopVideo src={HOME_VIDEO} centerOnWide label="Voiles Youna Collection en mouvement" className="size-full" />
             {HOME_ANNOUNCEMENT ? (
               <Link href={HOME_ANNOUNCEMENT.href} className="hidden items-center justify-center px-10 md:flex lg:px-16">

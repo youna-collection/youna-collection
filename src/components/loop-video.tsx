@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Courte vidéo muette qui tourne en boucle, avec un bouton pause (obligatoire pour une animation automatique).
  * Si la visiteuse a demandé moins d'animations, la vidéo reste en pause.
- * `centerOnWide` : sur écran large, la vidéo (verticale) est montrée entière au centre, sur fond blanc.
+ * `centerOnWide` : sur écran large, la vidéo (verticale) est montrée entière au centre, sur le fond de la page.
  * Sur téléphone, elle remplit tout le cadre.
  * `media` : la vidéo n'est téléchargée que si l'écran correspond.
  */
@@ -41,7 +41,7 @@ export function LoopVideo({
   }
 
   return (
-    <div className={`relative overflow-hidden ${centerOnWide ? "bg-photo md:bg-white" : "bg-photo"} ${className}`}>
+    <div className={`relative overflow-hidden ${centerOnWide ? "bg-photo md:bg-transparent" : "bg-photo"} ${className}`}>
       <video
         ref={video}
         muted
