@@ -20,10 +20,16 @@ export type EmailOrder = {
   relay_point: Record<string, string> | null;
   tracking_number: string | null;
   tracking_url: string | null;
+  /** « especes » + paid_at vide : la cliente paiera en main propre au retrait. */
+  payment_method?: string | null;
+  paid_at?: string | null;
   items: { product_name: string; variant_label: string | null; quantity: number; line_total_cents: number; components: { label: string }[] }[];
 };
 
 export type RenderedEmail = { subject: string; html: string; text: string };
+
+/** Commande click & collect à régler en espèces au retrait. */
+export const paysCashOnPickup = (o: Pick<EmailOrder, "payment_method" | "paid_at">) => o.payment_method === "especes" && !o.paid_at;
 
 const firstName = (o: EmailOrder) => o.shipping_address?.first_name?.trim() || null;
 const hello = (o: EmailOrder) => (firstName(o) ? `Bonjour ${firstName(o)},` : "Bonjour,");
@@ -47,7 +53,7 @@ function totalLines(o: EmailOrder) {
     { label: "Sous-total", value: formatPrice(o.subtotal_cents) },
     ...(o.discount_cents > 0 ? [{ label: `Réduction${o.promo_code ? ` (${o.promo_code})` : ""}`, value: `−${formatPrice(o.discount_cents)}` }] : []),
     { label: "Livraison", value: o.shipping_cents > 0 ? formatPrice(o.shipping_cents) : "Offerte" },
-    { label: "Total payé", value: formatPrice(o.total_cents), strong: true },
+    { label: paysCashOnPickup(o) ? "À régler en espèces au retrait" : "Total payé", value: formatPrice(o.total_cents), strong: true },
   ];
 }
 
@@ -79,15 +85,16 @@ const textList = (lines: { label: string; detail?: string | null; value: string 
 
 export function orderConfirmationEmail(o: EmailOrder): RenderedEmail {
   const subject = `Merci pour votre commande n° ${o.order_number}`;
+  const intro = paysCashOnPickup(o)
+    ? `Nous avons bien reçu votre commande <strong>n° ${o.order_number}</strong>. Vous la réglerez en espèces (${formatPrice(o.total_cents)}) au moment du retrait : nous vous contacterons pour convenir du moment.`
+    : `Nous avons bien reçu votre commande <strong>n° ${o.order_number}</strong> et votre paiement. Nous la préparons avec soin et vous écrirons dès son envoi.`;
   const accountHint = o.user_id
     ? "Vous pouvez suivre votre commande à tout moment depuis votre compte."
     : "Créez votre compte avec cette même adresse e-mail : vous y retrouverez cette commande et pourrez la suivre.";
   const body = [
     heading("Merci pour votre commande"),
     paragraph(escapeHtml(hello(o))),
-    paragraph(
-      `Nous avons bien reçu votre commande <strong>n° ${o.order_number}</strong> et votre paiement. Nous la préparons avec soin et vous écrirons dès son envoi.`,
-    ),
+    paragraph(intro),
     subheading("Votre commande"),
     rows(itemLines(o)),
     rows(totalLines(o)),
@@ -99,7 +106,7 @@ export function orderConfirmationEmail(o: EmailOrder): RenderedEmail {
   const text = [
     hello(o),
     "",
-    `Nous avons bien reçu votre commande n° ${o.order_number} et votre paiement. Nous la préparons avec soin et vous écrirons dès son envoi.`,
+    intro.replace(/<[^>]+>/g, ""),
     "",
     textList(itemLines(o)),
     textList(totalLines(o)),
@@ -117,7 +124,7 @@ export function orderShippedEmail(o: EmailOrder): RenderedEmail {
   const link = trackingLink(o.carrier, o.tracking_number, o.tracking_url, deliveryPostalCode(o.relay_point, o.shipping_address));
   const subject = pickup ? `Votre commande n° ${o.order_number} est prête` : `Votre commande n° ${o.order_number} est en route`;
   const intro = pickup
-    ? `Votre commande <strong>n° ${o.order_number}</strong> est prête. Nous vous contacterons pour convenir du retrait.`
+    ? `Votre commande <strong>n° ${o.order_number}</strong> est prête. Nous vous contacterons pour convenir du retrait.${paysCashOnPickup(o) ? ` Pensez à prévoir ${formatPrice(o.total_cents)} en espèces.` : ""}`
     : `Bonne nouvelle : votre commande <strong>n° ${o.order_number}</strong> vient d'être confiée à ${escapeHtml(CARRIER_LABELS[o.carrier ?? ""] ?? "notre transporteur")}.`;
   const tracking = o.tracking_number ? `Numéro de suivi : ${o.tracking_number}` : null;
   const body = [
@@ -170,16 +177,18 @@ const ADMIN_FOOTER = "Alerte automatique de votre boutique.";
 
 export function adminNewOrderEmail(o: EmailOrder): RenderedEmail {
   const name = [o.shipping_address?.first_name, o.shipping_address?.last_name].filter(Boolean).join(" ") || o.email;
-  const subject = `Nouvelle commande n° ${o.order_number} — ${formatPrice(o.total_cents)}`;
+  const cash = paysCashOnPickup(o);
+  const subject = `Nouvelle commande n° ${o.order_number} — ${formatPrice(o.total_cents)}${cash ? " (espèces au retrait)" : ""}`;
+  const cashNote = cash ? " À encaisser en espèces au retrait : rien n'a encore été payé." : "";
   const body = [
     heading(`Commande n° ${o.order_number}`),
-    paragraph(`${escapeHtml(name)} vient de commander pour <strong>${escapeHtml(formatPrice(o.total_cents))}</strong>.`),
+    paragraph(`${escapeHtml(name)} vient de commander pour <strong>${escapeHtml(formatPrice(o.total_cents))}</strong>.${escapeHtml(cashNote)}`),
     rows(itemLines(o)),
     subheading("Livraison"),
     addressBlock(deliveryLines(o)),
     button("Ouvrir la commande", siteUrl(`/admin/commandes/${o.order_number}`)),
   ].join("");
-  const text = [`${name} vient de commander pour ${formatPrice(o.total_cents)}.`, "", textList(itemLines(o)), "", siteUrl(`/admin/commandes/${o.order_number}`)].join("\n");
+  const text = [`${name} vient de commander pour ${formatPrice(o.total_cents)}.${cashNote}`, "", textList(itemLines(o)), "", siteUrl(`/admin/commandes/${o.order_number}`)].join("\n");
   return { subject, html: layout({ preheader: subject, body, footer: ADMIN_FOOTER }), text };
 }
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/order-status";
 import { countOrdersByStatus, customerName, listAdminOrders, ORDER_FILTERS, type OrderFilter, SOURCE_LABELS } from "@/lib/admin/orders";
 import { formatPrice } from "@/lib/format";
-import { CARRIER_LABELS } from "@/lib/order-display";
+import { awaitingCash, CARRIER_LABELS } from "@/lib/order-display";
 
 export const metadata: Metadata = { title: "Commandes" };
 export const dynamic = "force-dynamic";
@@ -101,7 +101,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
                     <span className="font-medium">n° {order.order_number}</span>
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.status} cashDue={awaitingCash(order)} />
                   </span>
                   <span>{formatPrice(order.total_cents)}</span>
                 </div>

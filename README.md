@@ -246,6 +246,7 @@ Commandes → « Exporter pour la comptabilité (CSV) » : un mois ou une année
 - Le panier est vérifié par le serveur à chaque étape : prix, stock et frais de port viennent toujours de la base.
 - Au clic sur « Commander et payer », les articles (et les voiles des bouquets) sont **mis de côté 36 minutes**, le temps du paiement Stripe. Sans paiement, ils sont remis en vente.
 - La commande est créée quand Stripe confirme le paiement : par le **webhook** (`/api/stripe/webhook`) en ligne, ou par la page de remerciement. Une même commande n'est jamais créée deux fois.
+- **Espèces au retrait** (click & collect seulement) : la commande est créée tout de suite sans Stripe (`place_cash_order`, `payment_method = 'especes'`, `paid_at` vide). Passer la commande à « Livrée » (retrait) note le paiement reçu (trigger `cash_paid_on_pickup`). Si la cliente ne vient pas : « Annuler la commande » sur la fiche (`cancel_unpaid_order`) remet les articles en stock.
 - Carte de test Stripe : `4242 4242 4242 4242`, date future quelconque, CVC quelconque.
 - **Webhook (une fois le site en ligne)** : dans Stripe > Développeurs > Webhooks, ajouter l'adresse `https://<site>/api/stripe/webhook` avec les événements `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` et `checkout.session.expired`, puis copier le secret `whsec_...` dans `STRIPE_WEBHOOK_SECRET`.
 - Avant le lancement : supprimer les commandes d'essai (n° 2001…) et repartir de 2001.

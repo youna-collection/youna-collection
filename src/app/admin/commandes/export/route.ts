@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
   }
 
   const date = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" });
-  const payment = (o: Row) => (o.source === "web" ? "Carte (Stripe)" : o.payment_method ? (PAYMENT_LABELS[o.payment_method] ?? o.payment_method) : "");
+  const payment = (o: Row) =>
+    o.payment_method ? (PAYMENT_LABELS[o.payment_method] ?? o.payment_method) : o.source === "web" ? "Carte (Stripe)" : "";
   return csvResponse(
     [
       [

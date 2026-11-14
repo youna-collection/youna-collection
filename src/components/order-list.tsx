@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { OrderSummary } from "@/lib/account";
 import { formatPrice } from "@/lib/format";
-import { formatDate } from "@/lib/order-display";
+import { awaitingCash, formatDate } from "@/lib/order-display";
 import { StatusBadge } from "./order-status";
 
 export function OrderList({ orders }: { orders: OrderSummary[] }) {
@@ -17,7 +17,7 @@ export function OrderList({ orders }: { orders: OrderSummary[] }) {
               </span>
             </span>
             <span className="flex flex-col items-end gap-1">
-              <StatusBadge status={order.status} />
+              <StatusBadge status={order.status} cashDue={awaitingCash(order)} />
               <span className="text-sm">{formatPrice(order.total_cents)}</span>
             </span>
           </Link>

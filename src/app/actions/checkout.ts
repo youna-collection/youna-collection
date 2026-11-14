@@ -1,12 +1,15 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import type { ActionState } from "./auth";
 import { getCurrentUser } from "@/lib/auth";
 import { getCart } from "@/lib/cart";
 import { buildSnapshot, type ShippingChoice } from "@/lib/cart-rules";
-import { getShippingMethods } from "@/lib/catalog";
+import { CATALOG_TAG, getShippingMethods } from "@/lib/catalog";
+import { notifyOrderPaid } from "@/lib/email/order-emails";
 import { applyPromo, normalizePromoCode, type Promo, promoError } from "@/lib/promo";
 import { getServicePoint, isSendcloudConfigured } from "@/lib/sendcloud";
 import { quote } from "@/lib/shipping";
@@ -39,6 +42,8 @@ const schema = z.object({
   relay: text(2000).optional(),
   reminderConsent: z.literal("on").optional(),
   promoCode: text(40).optional(),
+  // « cash » : espèces au retrait, seulement pour le click & collect.
+  payment: z.enum(["card", "cash"]).optional(),
 });
 
 const relaySchema = z.object({
@@ -59,7 +64,6 @@ const field = (formData: FormData, name: string) => {
 };
 
 export async function startCheckout(_: ActionState, formData: FormData): Promise<ActionState> {
-  if (!isStripeConfigured) return fail("Le paiement n'est pas encore configuré.");
   if ((await getShopStatus()).maintenance) return fail(MAINTENANCE_MESSAGE);
   if ((await isLoginRequiredForCheckout()) && !(await getCurrentUser())) {
     return fail("Connectez-vous ou créez votre compte pour commander : votre panier est gardé.");
@@ -68,6 +72,8 @@ export async function startCheckout(_: ActionState, formData: FormData): Promise
   const parsed = schema.safeParse(Object.fromEntries(Object.keys(schema.shape).map((key) => [key, field(formData, key)])));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Formulaire incomplet.");
   const input = parsed.data;
+  const cash = input.payment === "cash";
+  if (!cash && !isStripeConfigured) return fail("Le paiement par carte n'est pas encore configuré.");
 
   // Tout est recalculé ici : prix, stock et frais de port viennent de la base.
   const cart = await getCart();
@@ -77,6 +83,7 @@ export async function startCheckout(_: ActionState, formData: FormData): Promise
   const method = (await getShippingMethods()).find((m) => m.code === input.method);
   const shippingCents = method ? quote(method, input.country, cart.weightGrams) : null;
   if (!method || shippingCents === null) return fail("Ce mode de livraison n'est pas disponible pour ce pays.");
+  if (cash && method.carrier !== "pickup") return fail("Le paiement en espèces n'est possible qu'en click & collect.");
 
   const contact = { first_name: input.firstName, last_name: input.lastName, phone: input.phone, country: input.country };
   let address: Record<string, string> = contact;
@@ -133,19 +140,20 @@ export async function startCheckout(_: ActionState, formData: FormData): Promise
     promo ? { code: promo.code, discountCents: priced.discountCents, shippingCents: priced.shippingCents } : null,
   );
 
-  const stripe = getStripe();
   const user = await getCurrentUser();
   const cartId = cart.cart.id;
 
   // Une ancienne page de paiement de ce panier ne doit plus pouvoir être payée.
-  const { data: previous } = await admin
-    .from("checkouts")
-    .select("stripe_session_id")
-    .eq("cart_id", cartId)
-    .eq("status", "open")
-    .not("stripe_session_id", "is", null);
-  for (const row of previous ?? []) {
-    await stripe.checkout.sessions.expire(row.stripe_session_id!).catch(() => undefined);
+  if (isStripeConfigured) {
+    const { data: previous } = await admin
+      .from("checkouts")
+      .select("stripe_session_id")
+      .eq("cart_id", cartId)
+      .eq("status", "open")
+      .not("stripe_session_id", "is", null);
+    for (const row of previous ?? []) {
+      await getStripe().checkout.sessions.expire(row.stripe_session_id!).catch(() => undefined);
+    }
   }
 
   const now = Date.now();
@@ -163,6 +171,27 @@ export async function startCheckout(_: ActionState, formData: FormData): Promise
     }
     return fail("La commande n'a pas pu être préparée. Réessayez dans un instant.");
   }
+
+  const rememberCart = () =>
+    // Le rappel de panier ne part que si la case a été cochée cette fois-ci (jamais pré-cochée).
+    // La cocher de nouveau après une désinscription vaut un nouveau consentement.
+    saveReminderChoice(admin, cartId, input.email, Boolean(input.reminderConsent));
+
+  // Espèces : la commande est enregistrée tout de suite, la cliente paiera en main propre au retrait.
+  if (cash) {
+    const { data: orderId, error } = await admin.rpc("place_cash_order", { p_checkout_id: checkoutId });
+    if (error || typeof orderId !== "string") {
+      console.error("Commande en espèces :", error?.message);
+      await admin.rpc("release_checkout", { p_checkout_id: checkoutId });
+      return fail("La commande n'a pas pu être enregistrée. Réessayez dans un instant.");
+    }
+    await rememberCart();
+    updateTag(CATALOG_TAG);
+    after(() => notifyOrderPaid(orderId));
+    redirect(`/commande/confirmee?commande=${orderId}`);
+  }
+
+  const stripe = getStripe();
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   let sessionUrl: string | null;
@@ -218,19 +247,21 @@ export async function startCheckout(_: ActionState, formData: FormData): Promise
     return fail("Le paiement n'a pas pu démarrer. Réessayez dans un instant.");
   }
 
-  // Le rappel de panier ne part que si la case a été cochée cette fois-ci (jamais pré-cochée).
-  // La cocher de nouveau après une désinscription vaut un nouveau consentement.
-  await admin
-    .from("carts")
-    .update({
-      email: input.email,
-      reminder_consent: Boolean(input.reminderConsent),
-      reminder_consent_at: input.reminderConsent ? new Date().toISOString() : null,
-      last_activity_at: new Date().toISOString(),
-    })
-    .eq("id", cartId);
-  if (input.reminderConsent) await admin.from("email_suppressions").delete().eq("email", input.email);
+  await rememberCart();
 
   if (!sessionUrl) return fail("Le paiement n'a pas pu démarrer. Réessayez dans un instant.");
   redirect(sessionUrl);
+}
+
+async function saveReminderChoice(admin: ReturnType<typeof createAdminClient>, cartId: string, email: string, consent: boolean) {
+  await admin
+    .from("carts")
+    .update({
+      email,
+      reminder_consent: consent,
+      reminder_consent_at: consent ? new Date().toISOString() : null,
+      last_activity_at: new Date().toISOString(),
+    })
+    .eq("id", cartId);
+  if (consent) await admin.from("email_suppressions").delete().eq("email", email);
 }

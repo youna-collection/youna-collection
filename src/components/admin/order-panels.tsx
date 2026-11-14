@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { addOrderNote, refundOrder, saveTracking, setOrderStatus } from "@/app/actions/admin-orders";
+import { addOrderNote, cancelUnpaidOrder, refundOrder, saveTracking, setOrderStatus } from "@/app/actions/admin-orders";
 import { centsToInput, formatPrice, parseEuros } from "@/lib/format";
 import type { OrderStatus } from "@/lib/order-display";
 
@@ -32,6 +32,7 @@ export function StatusPanel({
   trackingUrl,
   needsTracking,
   canNotify = true,
+  cashDueCents = null,
 }: {
   orderId: string;
   status: OrderStatus;
@@ -41,6 +42,8 @@ export function StatusPanel({
   needsTracking: boolean;
   /** Faux pour une commande de l'ancien site Shopify : aucun e-mail n'est envoyé. */
   canNotify?: boolean;
+  /** Click & collect en espèces pas encore payé : montant à encaisser au retrait. */
+  cashDueCents?: number | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -98,7 +101,15 @@ export function StatusPanel({
       {from === "paid" || from === "preparing" ? (
         shipping ? (
           <div className="flex flex-col gap-3">
-            {needsTracking ? trackingFields : <p className="text-sm text-muted">Retrait sur place : pas de numéro de suivi.</p>}
+            {needsTracking ? (
+              trackingFields
+            ) : cashDueCents ? (
+              <p className="text-sm">
+                Encaissez <strong>{formatPrice(cashDueCents)}</strong> en espèces : la commande sera notée payée.
+              </p>
+            ) : (
+              <p className="text-sm text-muted">Retrait sur place : pas de numéro de suivi.</p>
+            )}
             {needsTracking && canNotify ? (
               <label className="flex min-h-11 items-center gap-3 text-sm">
                 <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="size-5 accent-ink" />
@@ -107,7 +118,7 @@ export function StatusPanel({
             ) : null}
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={pending} onClick={() => go(needsTracking ? "shipped" : "delivered", true)} className={primary}>
-                {needsTracking ? "Confirmer l'envoi" : "Confirmer le retrait"}
+                {needsTracking ? "Confirmer l'envoi" : cashDueCents ? "Confirmer le retrait et le paiement" : "Confirmer le retrait"}
               </button>
               <button type="button" disabled={pending} onClick={() => setShipping(false)} className={secondary}>
                 Annuler
@@ -168,6 +179,52 @@ export function StatusPanel({
         La cliente voit le nouveau statut (et le suivi) dans son espace client.{" "}
         {canNotify ? "L'e-mail d'expédition ne part qu'une fois par commande." : "Commande de l'ancien site : aucun e-mail n'est envoyé."}
       </p>
+      <Feedback message={message} />
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Espèces au retrait : la cliente n'est pas venue
+// ---------------------------------------------------------------------------
+export function CancelUnpaidPanel({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function cancel() {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await cancelUnpaidOrder(orderId);
+      setMessage(result.ok ? { ok: true, text: result.message ?? "Commande annulée." } : { ok: false, text: result.error });
+      setConfirming(false);
+      if (result.ok) router.refresh();
+    });
+  }
+
+  return (
+    <section className="flex flex-col gap-3 border border-sand bg-ivory p-4">
+      <h2 className="text-lg">La cliente ne vient pas ?</h2>
+      <p className="text-sm text-muted">
+        Rien n&apos;a encore été payé. Annuler la commande remet tous ses articles en vente. La cliente ne reçoit pas d&apos;e-mail : prévenez-la si besoin.
+      </p>
+      {confirming ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={pending} onClick={cancel} className="min-h-11 bg-danger px-5 text-sm text-ivory disabled:opacity-50">
+            {pending ? "Annulation…" : "Oui, annuler la commande"}
+          </button>
+          <button type="button" disabled={pending} onClick={() => setConfirming(false)} className={secondary}>
+            Non
+          </button>
+        </div>
+      ) : (
+        <div>
+          <button type="button" onClick={() => setConfirming(true)} className={secondary}>
+            Annuler la commande
+          </button>
+        </div>
+      )}
       <Feedback message={message} />
     </section>
   );

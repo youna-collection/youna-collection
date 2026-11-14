@@ -21,8 +21,6 @@ export const metadata: Metadata = {
     template: "%s | Youna Collection",
   },
   description: "Voiles, abayas, cagoules et bouquets de voiles.",
-  // Le site de test ne doit pas apparaître sur Google. À retirer à l'ouverture (phase 7).
-  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

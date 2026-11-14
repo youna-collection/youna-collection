@@ -72,6 +72,28 @@ export async function setOrderStatus(input: z.input<typeof statusSchema>): Promi
   return { ok: true };
 }
 
+/** La cliente n'est pas venue chercher sa commande en espèces : annulée, articles remis en vente. */
+export async function cancelUnpaidOrder(orderId: string): Promise<OrderActionResult> {
+  await requireAdmin();
+  if (!z.uuid().safeParse(orderId).success) return { ok: false, error: "Demande invalide." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_unpaid_order", { p_order_id: orderId });
+  if (error) {
+    console.error("Annulation commande en espèces", error.message);
+    return {
+      ok: false,
+      error: error.message.includes("commande_non_annulable")
+        ? "Cette commande ne peut plus être annulée ainsi (déjà payée ou remboursée)."
+        : "La commande n'a pas pu être annulée.",
+    };
+  }
+  const { data } = await supabase.from("orders").select("order_number").eq("id", orderId).single();
+  updateTag(CATALOG_TAG);
+  revalidatePath("/admin/stock");
+  refresh(data?.order_number as number | undefined);
+  return { ok: true, message: "Commande annulée : les articles sont de nouveau en vente." };
+}
+
 const trackingSchema = z.object({ orderId: z.uuid(), trackingNumber: z.string().trim().max(60), trackingUrl: httpsUrl });
 
 export async function saveTracking(input: z.input<typeof trackingSchema>): Promise<OrderActionResult> {

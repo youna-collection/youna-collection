@@ -11,6 +11,11 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   refunded: "Remboursée",
 };
 
+/** Commande click & collect en espèces, pas encore payée (la cliente paie au retrait). */
+export function awaitingCash(o: { status: string; payment_method?: string | null; paid_at?: string | null }): boolean {
+  return o.payment_method === "especes" && !o.paid_at && (o.status === "paid" || o.status === "preparing");
+}
+
 /** Étapes montrées à la cliente, dans l'ordre. */
 export const ORDER_STEPS: OrderStatus[] = ["paid", "preparing", "shipped", "delivered"];
 

@@ -9,7 +9,7 @@ import { adminNewOrderEmail, adminSoldOutEmail, type EmailOrder, orderConfirmati
  */
 
 const ORDER_SELECT = `id, order_number, email, user_id, source, carrier, subtotal_cents, discount_cents, shipping_cents, total_cents,
-  promo_code, shipping_address, relay_point, tracking_number, tracking_url,
+  promo_code, shipping_address, relay_point, tracking_number, tracking_url, payment_method, paid_at,
   items:order_items ( variant_id, product_name, variant_label, quantity, line_total_cents, components:order_item_components ( label, variant_id ) )`;
 
 type LoadedOrder = Omit<EmailOrder, "items"> & {
@@ -30,7 +30,7 @@ async function safely(label: string, task: () => Promise<unknown>) {
   }
 }
 
-/** Commande payée en ligne : confirmation à la cliente, alerte à la boutique, alerte de rupture. */
+/** Commande payée en ligne (ou à payer en espèces au retrait) : confirmation à la cliente, alerte à la boutique, alerte de rupture. */
 export async function notifyOrderPaid(orderId: string): Promise<void> {
   await safely("commande payée", async () => {
     const order = await loadOrder(orderId);

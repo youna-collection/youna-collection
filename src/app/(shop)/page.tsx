@@ -10,30 +10,34 @@ import { isInStock, type Product } from "@/lib/product";
 export const revalidate = 300;
 
 /**
- * Vidéo d'accueil en test (format portrait 768 × 1344), à la place des photos d'accueil.
- * Elle remplit l'écran sous le menu : plein cadre sur téléphone ; sur ordinateur, au centre,
- * sur le fond beige du site. Mettre null pour revenir aux photos.
+ * Vidéo d'accueil (format portrait 768 × 1344), sur téléphone seulement : plein cadre sous le menu.
+ * Sur ordinateur, la photo d'accueil choisie dans Paramètres. Mettre null pour revenir aux photos partout.
  */
 const HOME_VIDEO: string | null = "/videos/accueil.mp4";
 
-/**
- * Sur ordinateur, à droite de la vidéo : l'annonce écrite (image de Youna, police manuscrite, fond transparent).
- * Le modèle annoncé passe aussi en premier dans les bandes de couleurs. null pour l'enlever.
- */
-const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: number; href: string; productSlug: string } | null = {
-  image: "/images/new-drop-liquid-silk-signature.png",
-  alt: "New Drop : Liquid Silk Signature",
-  width: 1089,
-  height: 385,
-  href: "/collections/voiles?modele=liquid-silk-signature",
-  productSlug: "liquid-silk-signature",
-};
+/** Le modèle mis en avant (New Drop) passe en premier dans les bandes de couleurs. null pour l'ordre normal. */
+const HOME_FEATURED_SLUG: string | null = "liquid-silk-signature";
+
+/** Image vide (1 px) : le téléphone ne télécharge pas la photo réservée à l'ordinateur. */
+const BLANK_GIF = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 /** Sous les voiles : les prochaines pièces, en aperçu (images envoyées par Youna). Vider la liste pour enlever la partie. */
 const COMING_SOON = [
   { image: "/images/bientot-gilet-zippe.webp", alt: "Gilet zippé col montant en maille, coloris prune et gris anthracite", width: 1200, height: 1097 },
   { image: "/images/bientot-pantalon-portefeuille.webp", alt: "Pantalon large à jupe portefeuille nouée, coloris beige et noir", width: 1200, height: 1280 },
 ];
+
+/** La photo d'accueil, seulement sur ordinateur (à partir de 768 px de large). */
+function DesktopHeroPicture({ src }: { src: string }) {
+  const { props } = getImageProps({ alt: "", fill: true, sizes: "100vw", fetchPriority: "high", loading: "eager", src });
+  return (
+    <picture>
+      <source media="(min-width: 768px)" srcSet={props.srcSet} sizes="100vw" />
+      {/* Image décorative (alt vide) ; sur téléphone, l'image vide. */}
+      <img {...props} src={BLANK_GIF} srcSet={undefined} alt="" className="object-cover" />
+    </picture>
+  );
+}
 
 /** Les couleurs d'un produit qui ont leur propre photo. */
 function colorTiles(product: Product) {
@@ -75,7 +79,7 @@ export default async function HomePage() {
     .filter((product) => inCategory(product, "voiles"))
     .map((product) => ({ product, tiles: colorTiles(product) }))
     .filter((row) => row.tiles.length > 0)
-    .sort((a, b) => Number(b.product.slug === HOME_ANNOUNCEMENT?.productSlug) - Number(a.product.slug === HOME_ANNOUNCEMENT?.productSlug));
+    .sort((a, b) => Number(b.product.slug === HOME_FEATURED_SLUG) - Number(a.product.slug === HOME_FEATURED_SLUG));
 
   // Puis les vêtements, et l'espace bouquets en dernier.
   const clothes = products.filter((product) => inCategory(product, "jupes"));
@@ -87,23 +91,18 @@ export default async function HomePage() {
     <main>
       <section className="border-b border-sand bg-paper">
         {HOME_VIDEO ? (
-          // Hauteur de l'écran moins la bande et le menu (100 px sur téléphone, 115 px sur ordinateur), jamais moins de 420 px.
-          // Téléphone : la vidéo seule, plein cadre. Ordinateur : vidéo à gauche, annonce écrite à droite, sur fond blanc.
-          <div className="h-[calc(100svh-100px)] min-h-[420px] w-full md:grid md:h-[calc(100svh-115px)] md:grid-cols-2 md:bg-ivory">
-            <LoopVideo src={HOME_VIDEO} centerOnWide label="Voiles Youna Collection en mouvement" className="size-full" />
-            {HOME_ANNOUNCEMENT ? (
-              <Link href={HOME_ANNOUNCEMENT.href} className="hidden items-center justify-center px-10 md:flex lg:px-16">
-                <Image
-                  src={HOME_ANNOUNCEMENT.image}
-                  alt={HOME_ANNOUNCEMENT.alt}
-                  width={HOME_ANNOUNCEMENT.width}
-                  height={HOME_ANNOUNCEMENT.height}
-                  sizes="40vw"
-                  className="h-auto w-full max-w-lg"
-                />
-              </Link>
+          <>
+            {/* Téléphone : la vidéo plein cadre, hauteur de l'écran moins la bande et le menu (100 px), jamais moins de 420 px. */}
+            <div className="h-[calc(100svh-100px)] min-h-[420px] w-full md:hidden">
+              <LoopVideo src={HOME_VIDEO} media="(max-width: 767px)" label="Voiles Youna Collection en mouvement" className="size-full" />
+            </div>
+            {/* Ordinateur : la photo d'accueil de Paramètres, en 16:9. */}
+            {hero ? (
+              <div className="relative hidden aspect-[16/9] w-full bg-photo md:block">
+                <DesktopHeroPicture src={productImageUrl(hero.desktop)} />
+              </div>
             ) : null}
-          </div>
+          </>
         ) : hero ? (
           // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 16:9 sur ordinateur.
           <div className="relative aspect-[4/5] w-full bg-photo md:aspect-[16/9]">

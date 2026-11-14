@@ -5,7 +5,7 @@ import { StatusBadge, StatusSteps } from "@/components/order-status";
 import { getMyOrder } from "@/lib/account";
 import { requireProfile } from "@/lib/auth";
 import { formatPrice } from "@/lib/format";
-import { CARRIER_LABELS, documentNumber, formatDate, deliveryPostalCode, trackingLink } from "@/lib/order-display";
+import { awaitingCash, CARRIER_LABELS, documentNumber, formatDate, deliveryPostalCode, trackingLink } from "@/lib/order-display";
 import { COUNTRY_NAMES } from "@/lib/shipping";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +45,7 @@ export default async function OrderPage({
   // Commande passée sur l'ancien site Shopify : pas de facture ni de SAV ici.
   const legacy = order.source === "shopify_import";
   const invoice = order.invoices.find((i) => i.kind === "invoice");
+  const cashDue = awaitingCash(order);
 
   return (
     <div className="flex flex-col gap-8">
@@ -59,7 +60,7 @@ export default async function OrderPage({
           <h1 className="text-2xl font-light tracking-[0.15em] uppercase">
             Commande n° {order.order_number}
           </h1>
-          <StatusBadge status={order.status} />
+          <StatusBadge status={order.status} cashDue={cashDue} />
         </div>
         <p className="text-sm text-muted">
           {inPerson ? "Achat en boutique" : "Passée"} le{" "}
@@ -67,7 +68,13 @@ export default async function OrderPage({
         </p>
       </div>
 
-      {inPerson ? null : <StatusSteps status={order.status} />}
+      {inPerson ? null : <StatusSteps status={order.status} cashDue={cashDue} />}
+
+      {cashDue ? (
+        <p className="border border-sand p-4 text-sm">
+          Vous réglerez <strong>{formatPrice(order.total_cents)}</strong> en espèces au moment du retrait. Nous vous contacterons pour convenir du moment.
+        </p>
+      ) : null}
 
       {legacy ? (
         <p className="text-sm text-muted">
@@ -75,7 +82,7 @@ export default async function OrderPage({
         </p>
       ) : order.status !== "cancelled" ? (
         <div className="flex flex-wrap gap-2 text-sm">
-          {invoice ? (
+          {cashDue ? null : invoice ? (
             <a href={`/factures/${invoice.id}`} target="_blank" className="flex min-h-11 items-center border border-ink px-4">
               Télécharger la facture
             </a>

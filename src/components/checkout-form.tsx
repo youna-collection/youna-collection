@@ -63,6 +63,7 @@ export function CheckoutForm({
   const [address, setAddress] = useState(preferred ? fromSaved(preferred) : { line1: "", line2: "", postalCode: "", city: "" });
   const [relay, setRelay] = useState<RelayPoint | null>(null);
   const [consent, setConsent] = useState(false);
+  const [payment, setPayment] = useState<"card" | "cash">("card");
   const [promo, setPromo] = useState<Promo | null>(null);
   const [promoInput, setPromoInput] = useState("");
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
@@ -74,6 +75,9 @@ export function CheckoutForm({
   const shippingCents = current?.priceCents ?? 0;
   const missingRelay = Boolean(method?.requiresRelayPoint && !relay);
   const priced = applyPromo(promo, subtotalCents, shippingCents);
+  // Espèces au retrait : seulement pour le click & collect.
+  const pickup = method?.carrier === "pickup";
+  const cash = pickup && payment === "cash";
 
   function applyCode() {
     if (!promoInput.trim()) return;
@@ -215,6 +219,37 @@ export function CheckoutForm({
           ) : null}
         </Section>
 
+        {pickup ? (
+          <Section title="Paiement">
+            <div className="flex flex-col gap-2" role="radiogroup" aria-label="Mode de paiement">
+              {(
+                [
+                  ["card", "Carte bancaire, en ligne", "Paiement sécurisé par Stripe."],
+                  ["cash", "Espèces, au moment du retrait", "Vous payez en main propre quand vous récupérez votre commande."],
+                ] as const
+              ).map(([value, title, detail]) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-start gap-3 border p-4 text-sm ${payment === value ? "border-ink bg-white" : "border-sand"}`}
+                >
+                  <input
+                    type="radio"
+                    name="payment"
+                    value={value}
+                    checked={payment === value}
+                    onChange={() => setPayment(value)}
+                    className="mt-1 accent-ink"
+                  />
+                  <span className="flex-1">
+                    <span className="block">{title}</span>
+                    <span className="block text-muted">{detail}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+
         <label className="flex items-start gap-3 text-sm">
           <input
             type="checkbox"
@@ -339,7 +374,7 @@ export function CheckoutForm({
           disabled={pending || !method || missingRelay}
           className="min-h-12 bg-ink px-6 text-sm tracking-widest text-ivory uppercase disabled:opacity-50"
         >
-          {pending ? "Patientez…" : "Commander et payer"}
+          {pending ? "Patientez…" : cash ? "Valider ma commande" : "Commander et payer"}
         </button>
         {missingRelay ? <p className="text-xs text-muted">Choisissez d&apos;abord votre point relais.</p> : null}
         <p className="text-xs text-muted">
@@ -353,7 +388,11 @@ export function CheckoutForm({
           </a>
           .
         </p>
-        <p className="text-xs text-muted">Paiement sécurisé par Stripe. Vos coordonnées bancaires ne passent jamais par notre site.</p>
+        <p className="text-xs text-muted">
+          {cash
+            ? `Vous réglerez ${formatPrice(priced.totalCents)} en espèces au retrait. Nous vous contacterons pour convenir du moment.`
+            : "Paiement sécurisé par Stripe. Vos coordonnées bancaires ne passent jamais par notre site."}
+        </p>
       </aside>
     </form>
   );

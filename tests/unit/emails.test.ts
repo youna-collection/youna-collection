@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { resolveDelivery } = await import("@/lib/email/send");
-const { adminSoldOutEmail, orderConfirmationEmail, orderRefundedEmail, orderShippedEmail } = await import("@/lib/email/templates");
+const { adminNewOrderEmail, adminSoldOutEmail, orderConfirmationEmail, orderRefundedEmail, orderShippedEmail } = await import("@/lib/email/templates");
 const { trackingLink } = await import("@/lib/order-display");
 const { csvCell } = await import("@/lib/csv");
 
@@ -80,6 +80,19 @@ describe("contenu des e-mails", () => {
     const email = orderRefundedEmail(order, { amount_cents: 1199, method: "stripe" });
     expect(email.subject).toContain("Remboursement de 11,99");
     expect(email.text).toContain("5 à 10 jours");
+  });
+
+  it("click & collect en espèces : la cliente sait qu'elle paie au retrait, la boutique qu'elle doit encaisser", () => {
+    const cash = { ...order, carrier: "pickup", relay_point: null, payment_method: "especes", paid_at: null };
+    const email = orderConfirmationEmail(cash);
+    expect(email.text).toContain("réglerez en espèces (37,77");
+    expect(email.text).toContain("À régler en espèces au retrait");
+    expect(email.text).not.toContain("et votre paiement");
+    expect(orderShippedEmail(cash).text).toMatch(/prévoir 37,77.* en espèces/);
+    expect(adminNewOrderEmail(cash).subject).toContain("(espèces au retrait)");
+    // Une fois l'argent reçu, plus rien à régler.
+    expect(orderConfirmationEmail({ ...cash, paid_at: "2026-11-14T10:00:00Z" }).text).toContain("Total payé");
+    expect(orderConfirmationEmail(order).text).toContain("et votre paiement");
   });
 
   it("alerte la boutique en cas de rupture", () => {

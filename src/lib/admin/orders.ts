@@ -42,6 +42,8 @@ export type AdminOrderRow = {
   refunded_cents: number;
   carrier: string | null;
   shipping_address: Address;
+  payment_method: string | null;
+  paid_at: string | null;
   item_count: number;
 };
 
@@ -52,7 +54,7 @@ export async function listAdminOrders(options: { filter: OrderFilter; q: string;
   const statuses = ORDER_FILTERS.find((f) => f.value === options.filter)?.statuses ?? [];
   let query = supabase
     .from("orders")
-    .select("id, order_number, created_at, status, source, email, total_cents, refunded_cents, carrier, shipping_address, items:order_items ( quantity )", {
+    .select("id, order_number, created_at, status, source, email, total_cents, refunded_cents, carrier, shipping_address, payment_method, paid_at, items:order_items ( quantity )", {
       count: "exact",
     })
     .order("created_at", { ascending: options.filter === "a-traiter" || options.filter === "preparation" })

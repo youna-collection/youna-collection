@@ -10,6 +10,8 @@ export type OrderSummary = {
   status: OrderStatus;
   total_cents: number;
   created_at: string;
+  payment_method: string | null;
+  paid_at: string | null;
   item_count: number;
 };
 
@@ -17,7 +19,7 @@ export async function getMyOrders(limit?: number): Promise<OrderSummary[]> {
   const supabase = await createClient();
   let query = supabase
     .from("orders")
-    .select("id, order_number, status, total_cents, created_at, items:order_items ( quantity )")
+    .select("id, order_number, status, total_cents, created_at, payment_method, paid_at, items:order_items ( quantity )")
     .order("created_at", { ascending: false });
   if (limit) query = query.limit(limit);
   const { data, error } = await query;
@@ -45,6 +47,7 @@ export type OrderDetail = {
   tracking_url: string | null;
   created_at: string;
   paid_at: string | null;
+  payment_method: string | null;
   shipped_at: string | null;
   delivered_at: string | null;
   items: {
@@ -65,7 +68,7 @@ export async function getMyOrder(orderNumber: number): Promise<OrderDetail | nul
     .from("orders")
     .select(
       `id, order_number, status, subtotal_cents, discount_cents, shipping_cents, total_cents, refunded_cents,
-       source, carrier, shipping_address, relay_point, tracking_number, tracking_url, created_at, paid_at, shipped_at, delivered_at,
+       source, carrier, shipping_address, relay_point, tracking_number, tracking_url, created_at, paid_at, payment_method, shipped_at, delivered_at,
        items:order_items ( id, product_name, variant_label, quantity, unit_price_cents, line_total_cents,
                            components:order_item_components ( label ) ),
        invoices ( id, kind, number )`,

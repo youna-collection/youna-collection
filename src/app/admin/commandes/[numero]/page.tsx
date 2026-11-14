@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmailList } from "@/components/admin/email-list";
 import { LabelPanel } from "@/components/admin/label-panel";
-import { NoteForm, RefundPanel, StatusPanel, type RefundableItem } from "@/components/admin/order-panels";
+import { CancelUnpaidPanel, NoteForm, RefundPanel, StatusPanel, type RefundableItem } from "@/components/admin/order-panels";
 import { listEmails } from "@/lib/admin/emails";
 import { listOrderTickets } from "@/lib/admin/support";
 import { TICKET_TYPE_LABELS } from "@/lib/support-rules";
@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/order-status";
 import { customerName, getAdminOrder, getShopSettings, sellerComplete, SOURCE_LABELS } from "@/lib/admin/orders";
 import { PAYMENT_LABELS } from "@/lib/admin/stock";
 import { formatPrice } from "@/lib/format";
-import { CARRIER_LABELS, documentNumber, ORDER_STATUS_LABELS, deliveryPostalCode, trackingLink } from "@/lib/order-display";
+import { awaitingCash, CARRIER_LABELS, documentNumber, ORDER_STATUS_LABELS, deliveryPostalCode, trackingLink } from "@/lib/order-display";
 import { isSendcloudConfigured } from "@/lib/sendcloud";
 import { COUNTRY_NAMES } from "@/lib/shipping";
 
@@ -50,6 +50,8 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
   const stripeMode = process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ? "" : "test/";
   const invoice = order.invoices.find((i) => i.kind === "invoice");
   const remaining = order.total_cents - order.refunded_cents;
+  // Click & collect en espèces pas encore payé : rien à rembourser, mais annulable si la cliente ne vient pas.
+  const cashDue = awaitingCash(order);
 
   const returned = new Map<string, number>();
   for (const r of order.refunds) for (const e of r.restocked) returned.set(e.order_item_id, (returned.get(e.order_item_id) ?? 0) + e.quantity);
@@ -69,7 +71,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl">Commande n° {order.order_number}</h1>
-          <StatusBadge status={order.status} />
+          <StatusBadge status={order.status} cashDue={cashDue} />
         </div>
         <p className="text-sm text-muted">
           {SOURCE_LABELS[order.source]} · {fmt(order.created_at)}
@@ -131,6 +133,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
               trackingNumber={order.tracking_number}
               trackingUrl={order.tracking_url}
               needsTracking={order.carrier !== "pickup"}
+              cashDueCents={cashDue ? remaining : null}
               canNotify={isWeb}
             />
           ) : null}
@@ -190,7 +193,9 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
             </dl>
           </section>
 
-          {isShopify ? null : (
+          {cashDue ? (
+            <CancelUnpaidPanel orderId={order.id} />
+          ) : isShopify ? null : (
             <RefundPanel
               orderId={order.id}
               remainingCents={remaining}
@@ -306,6 +311,14 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/comma
                   Voir le paiement dans Stripe ↗
                 </a>
               </>
+            ) : isWeb && order.payment_method === "especes" ? (
+              cashDue ? (
+                <p className="text-warning">
+                  Espèces au retrait : <strong>{formatPrice(remaining)}</strong> à encaisser
+                </p>
+              ) : (
+                <p>Espèces au retrait{order.paid_at ? ` · reçues le ${fmt(order.paid_at)}` : ""}</p>
+              )
             ) : (
               <p>{order.payment_method ? PAYMENT_LABELS[order.payment_method] : "—"}</p>
             )}
