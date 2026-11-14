@@ -20,7 +20,7 @@ function Message({ feedback }: { feedback: Feedback }) {
 
 /** Format de chaque emplacement : même rapport largeur/hauteur que le cadre de la page d'accueil. */
 const SLOTS: Record<HeroSlot, { title: string; size: string; aspect: string; maxSide: number; width: string }> = {
-  desktop: { title: "Ordinateur", size: "2400 × 1000 pixels (paysage)", aspect: "aspect-[12/5]", maxSide: 2400, width: "w-full max-w-md" },
+  desktop: { title: "Ordinateur", size: "1920 × 1080 pixels (paysage)", aspect: "aspect-[16/9]", maxSide: 2400, width: "w-full max-w-md" },
   mobile: { title: "Téléphone", size: "1080 × 1350 pixels (portrait)", aspect: "aspect-[4/5]", maxSide: 1350, width: "w-40" },
 };
 

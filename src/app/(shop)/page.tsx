@@ -1,9 +1,10 @@
 import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product-card";
-import { getCategories, getProducts, inCategory, productImageUrl } from "@/lib/catalog";
+import { ColorMarquee } from "@/components/color-marquee";
+import { getProducts, inCategory, productImageUrl } from "@/lib/catalog";
 import { getHomeHero } from "@/lib/shop-info";
-import { defaultVariant, imagesForVariant, isInStock, type Product } from "@/lib/product";
+import { isInStock, type Product } from "@/lib/product";
 
 export const revalidate = 300;
 
@@ -36,28 +37,24 @@ function HeroPicture({ desktop, mobile }: { desktop: string; mobile: string }) {
 }
 
 export default async function HomePage() {
-  const [categories, products, hero] = await Promise.all([getCategories(), getProducts(), getHomeHero()]);
+  const [products, hero] = await Promise.all([getProducts(), getHomeHero()]);
 
-  // La palette mise en avant : le produit qui a le plus de couleurs.
+  // Bandeau du haut quand aucune photo d'accueil n'est choisie : le produit qui a le plus de couleurs.
   const palette = [...products].sort((a, b) => colorTiles(b).length - colorTiles(a).length)[0];
-  const tiles = palette ? colorTiles(palette) : [];
-  const heroTiles = spread(tiles, 5);
-  const inStockCount = tiles.filter((tile) => isInStock(tile.variant)).length;
+  const heroTiles = spread(palette ? colorTiles(palette) : [], 5);
 
-  const categoryTiles = categories
-    .map((category) => {
-      const product = products.find((p) => p.category?.slug === category.slug) ?? products.find((p) => inCategory(p, category.slug));
-      const image = product ? imagesForVariant(product, defaultVariant(product)?.id ?? null)[0] : undefined;
-      return { category, image };
-    })
-    .filter((tile) => tile.image);
+  // Une rangée qui défile par modèle de voile (Liquid Jersey, Liquid Silk Signature…), dès qu'il a des photos de couleurs.
+  const voileRows = products
+    .filter((product) => inCategory(product, "voiles"))
+    .map((product) => ({ product, tiles: colorTiles(product) }))
+    .filter((row) => row.tiles.length > 0);
 
   return (
     <main>
       <section className="border-b border-sand bg-paper">
         {hero ? (
-          // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 12:5 sur ordinateur.
-          <div className="relative aspect-[4/5] w-full bg-photo md:aspect-[12/5]">
+          // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 16:9 sur ordinateur.
+          <div className="relative aspect-[4/5] w-full bg-photo md:aspect-[16/9]">
             <HeroPicture desktop={productImageUrl(hero.desktop)} mobile={productImageUrl(hero.mobile)} />
           </div>
         ) : heroTiles.length >= 3 ? (
@@ -89,71 +86,35 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {categoryTiles.length ? (
-        <section className="mx-auto max-w-6xl px-4 pt-16" aria-labelledby="univers">
-          <h2 id="univers" className="mb-8 text-center text-sm tracking-[0.3em] uppercase">
-            Nos univers
-          </h2>
-          <ul className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            {categoryTiles.map(({ category, image }) => (
-              <li key={category.id}>
-                <Link href={`/collections/${category.slug}`} className="group block">
-                  <div className="relative aspect-[3/4] overflow-hidden bg-photo">
-                    <Image
-                      src={image!.url}
-                      alt=""
-                      fill
-                      sizes="(min-width: 768px) 20vw, 50vw"
-                      className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                    />
-                  </div>
-                  <p className="mt-3 text-center text-xs tracking-[0.25em] uppercase">{category.name}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {palette && tiles.length > 3 ? (
-        <section className="pt-16" aria-labelledby="palette">
-          <div className="mx-auto flex max-w-6xl items-end justify-between gap-4 px-4">
+      {voileRows.map(({ product, tiles: rowTiles }, i) => (
+        <section key={product.id} className="pt-16" aria-labelledby={`modele-${product.slug}`}>
+          <div className="mx-auto mb-6 flex max-w-6xl items-end justify-between gap-4 px-4">
             <div>
-              <h2 id="palette" className="text-sm tracking-[0.3em] uppercase">
-                {palette.name}
+              <h2 id={`modele-${product.slug}`} className="text-sm tracking-[0.3em] uppercase">
+                {product.name}
               </h2>
-              <p className="mt-1 text-sm text-muted">
-                {tiles.length} couleurs · {inStockCount} en stock
-              </p>
+              <p className="mt-1 text-sm text-muted">{rowTiles.length} couleurs</p>
             </div>
             <Link
-              href={palette.category ? `/collections/${palette.category.slug}?modele=${palette.slug}` : `/produits/${palette.slug}`}
+              href={product.category ? `/collections/${product.category.slug}?modele=${product.slug}` : `/produits/${product.slug}`}
               className="text-xs tracking-widest uppercase underline underline-offset-4"
             >
               Voir tout
             </Link>
           </div>
-          <ul className="scrollbar-none mx-auto mt-6 flex max-w-6xl snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-2">
-            {tiles.map(({ variant, image }) => (
-              <li key={variant.id} className="w-28 shrink-0 snap-start md:w-36">
-                <Link href={`/produits/${palette.slug}?couleur=${variant.colorSlug}`} className="block">
-                  <div className="relative aspect-[3/4] bg-photo">
-                    <Image
-                      src={image!.url}
-                      alt={`${palette.name} ${variant.colorName}`}
-                      fill
-                      sizes="144px"
-                      className={`object-cover ${isInStock(variant) ? "" : "opacity-50"}`}
-                    />
-                  </div>
-                  <p className="mt-2 text-xs">{variant.colorName}</p>
-                  {isInStock(variant) ? null : <p className="text-[0.65rem] tracking-widest text-muted uppercase">Épuisé</p>}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <ColorMarquee
+            label={`Couleurs ${product.name}`}
+            reverse={i % 2 === 1}
+            tiles={rowTiles.map(({ variant, image }) => ({
+              key: variant.id,
+              href: `/produits/${product.slug}?couleur=${variant.colorSlug}`,
+              imageUrl: image!.url,
+              label: variant.colorName ?? product.name,
+              soldOut: !isInStock(variant),
+            }))}
+          />
         </section>
-      ) : null}
+      ))}
 
       {products.length ? (
         <section className="mx-auto max-w-6xl px-4 pt-16" aria-labelledby="collection">
