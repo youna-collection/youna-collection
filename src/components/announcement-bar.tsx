@@ -24,7 +24,7 @@ function Phrases({ hidden }: { hidden?: boolean }) {
 /** Petite bande tout en haut de la boutique, qui défile lentement. */
 export function AnnouncementBar() {
   return (
-    <div lang="en" className="marquee overflow-hidden bg-[#2b2520] py-1.5 font-display text-[0.95rem] text-[#eadcc3] italic md:text-base">
+    <div lang="en" className="marquee overflow-hidden bg-[#2b2520] py-1.5 font-display text-[0.95rem] font-medium text-[#eadcc3] italic md:text-base">
       <div className="marquee-track" style={{ "--marquee-duration": "60s" } as React.CSSProperties}>
         <Phrases />
         <Phrases hidden />

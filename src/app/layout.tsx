@@ -7,12 +7,12 @@ const jost = Jost({
   subsets: ["latin"],
 });
 
-// Police élégante de la bande « The beauty of modesty » (italique seulement, pour rester léger).
+// Police élégante : bande « The beauty of modesty » (italique) et espace bouquets de l'accueil.
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
   weight: "500",
-  style: "italic",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
