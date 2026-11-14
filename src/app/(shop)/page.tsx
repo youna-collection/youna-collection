@@ -112,7 +112,10 @@ export default async function HomePage() {
                 {tiles.length} couleurs · {inStockCount} en stock
               </p>
             </div>
-            <Link href={`/produits/${palette.slug}`} className="text-xs tracking-widest uppercase underline underline-offset-4">
+            <Link
+              href={palette.category ? `/collections/${palette.category.slug}?modele=${palette.slug}` : `/produits/${palette.slug}`}
+              className="text-xs tracking-widest uppercase underline underline-offset-4"
+            >
               Voir tout
             </Link>
           </div>
