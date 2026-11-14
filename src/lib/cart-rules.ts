@@ -133,10 +133,11 @@ export function evaluateCart(items: RawCartItem[], variants: Map<string, CartVar
       if (available <= 0) {
         line.problem = "Cet article est épuisé.";
       } else if (line.quantity > available) {
-        line.problem = `Plus que ${available} en stock.`;
+        // Jamais le nombre exact en public.
+        line.problem = "Cette quantité n'est plus disponible : réduisez-la.";
       } else {
         // La ligne seule passerait : c'est le même article, dans un bouquet du panier, qui manque.
-        line.problem = `Plus que ${available} en stock, en comptant les voiles de vos bouquets.`;
+        line.problem = "Cette quantité n'est plus disponible en comptant les voiles de vos bouquets : réduisez-la.";
       }
       continue;
     }

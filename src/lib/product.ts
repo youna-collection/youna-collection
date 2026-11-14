@@ -43,7 +43,7 @@ export type Product = {
 
 export type Category = { id: string; slug: string; name: string; position: number };
 
-/** En dessous de ce nombre, la fiche affiche « Plus que N ». */
+/** En dessous de ce nombre, la fiche affiche « Bientôt épuisé » (jamais le nombre exact). */
 export const LOW_STOCK = 3;
 
 export function isInStock(variant: Variant): boolean {

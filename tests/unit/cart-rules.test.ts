@@ -47,7 +47,7 @@ describe("panier", () => {
   it("bloque le paiement si la quantité dépasse le stock", () => {
     const cart = evaluateCart([{ id: "l1", variantId: "Noir", quantity: 4, veilIds: [] }], catalog(v("Noir")));
     expect(cart.canCheckout).toBe(false);
-    expect(cart.lines[0].problem).toBe("Plus que 3 en stock.");
+    expect(cart.lines[0].problem).toBe("Cette quantité n'est plus disponible : réduisez-la.");
   });
 
   it("signale un article retiré de la vente", () => {
@@ -107,7 +107,7 @@ describe("bouquets", () => {
       veils,
     );
     expect(cart.canCheckout).toBe(false);
-    expect(cart.lines[0].problem).toBe("Plus que 1 en stock, en comptant les voiles de vos bouquets.");
+    expect(cart.lines[0].problem).toBe("Cette quantité n'est plus disponible en comptant les voiles de vos bouquets : réduisez-la.");
     expect(cart.lines[1].problem).toBe("Le voile Liquid Jersey Matcha n'est plus disponible en quantité suffisante.");
   });
 

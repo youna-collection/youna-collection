@@ -64,7 +64,8 @@ function Gallery({ images, productName }: { images: ProductImage[]; productName:
 function StockLine({ variant }: { variant: Variant }) {
   if (!isInStock(variant)) return <p className="text-sm text-danger">Épuisé</p>;
   if (variant.trackStock && variant.available <= LOW_STOCK) {
-    return <p className="text-sm text-danger">Plus que {variant.available} en stock</p>;
+    // Jamais le nombre exact en public.
+    return <p className="text-sm text-danger">Bientôt épuisé</p>;
   }
   return <p className="text-sm text-success">En stock</p>;
 }
