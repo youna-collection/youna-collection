@@ -120,7 +120,7 @@ export default async function HomePage() {
               href="/collections/voiles"
               className="inline-flex min-h-12 items-center justify-center bg-ink px-8 text-sm tracking-widest text-ivory uppercase"
             >
-              Découvrir les voiles
+              Découvrir nos voiles Signature
             </Link>
             <Link
               href="/collections/bouquets"
