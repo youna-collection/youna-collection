@@ -1,7 +1,7 @@
 import { formatPrice } from "../format";
 import { CARRIER_LABELS, deliveryPostalCode, trackingLink } from "../order-display";
 import { COUNTRY_NAMES } from "../shipping";
-import { addressBlock, button, escapeHtml, heading, layout, paragraph, rows, siteUrl, small, subheading } from "./layout";
+import { addressBlock, button, escapeHtml, heading, highlight, layout, paragraph, productList, rows, siteUrl, small, subheading } from "./layout";
 
 /** Contenu des e-mails. Fonctions pures : faciles à tester et à prévisualiser. */
 
@@ -23,7 +23,15 @@ export type EmailOrder = {
   /** « especes » + paid_at vide : la cliente paiera en main propre au retrait. */
   payment_method?: string | null;
   paid_at?: string | null;
-  items: { product_name: string; variant_label: string | null; quantity: number; line_total_cents: number; components: { label: string }[] }[];
+  items: {
+    product_name: string;
+    variant_label: string | null;
+    quantity: number;
+    line_total_cents: number;
+    components: { label: string }[];
+    /** Photo de la couleur commandée (adresse complète), si elle existe. */
+    image_url?: string | null;
+  }[];
 };
 
 export type RenderedEmail = { subject: string; html: string; text: string };
@@ -40,6 +48,50 @@ function itemLines(o: EmailOrder) {
     detail: i.components.length ? `Voiles : ${groupLabels(i.components.map((c) => c.label)).join(", ")}` : null,
     value: formatPrice(i.line_total_cents),
   }));
+}
+
+/** Les articles avec leur photo, pour la cliente. */
+function productItems(o: EmailOrder) {
+  return o.items.map((i) => ({
+    imageUrl: i.image_url ?? null,
+    name: i.product_name,
+    lines: [
+      i.variant_label,
+      i.components.length ? `Voiles : ${groupLabels(i.components.map((c) => c.label)).join(", ")}` : null,
+      `Quantité : ${i.quantity}`,
+    ].filter((l): l is string => Boolean(l)),
+    value: formatPrice(i.line_total_cents),
+  }));
+}
+
+/** Délais indicatifs après l'expédition, en jours ouvrés (les mêmes que la page Livraison et retours). */
+function deliveryDelay(o: EmailOrder): [number, number] | null {
+  if (o.carrier === "pickup") return null;
+  const country = o.shipping_address?.country;
+  if (country && country !== "FR") return [4, 8];
+  if (o.carrier === "mondial_relay") return [3, 5];
+  if (o.carrier === "colissimo") return [2, 3];
+  return null;
+}
+
+function addBusinessDays(from: Date, days: number): Date {
+  const d = new Date(from);
+  let added = 0;
+  while (added < days) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const day = d.getUTCDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return d;
+}
+
+const dayFormat = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris" });
+
+/** « mardi 2 décembre – jeudi 4 décembre » : la fenêtre de livraison estimée à partir d'aujourd'hui. */
+export function estimatedDelivery(o: EmailOrder, now: Date): string | null {
+  const delay = deliveryDelay(o);
+  if (!delay) return null;
+  return `${dayFormat.format(addBusinessDays(now, delay[0]))} – ${dayFormat.format(addBusinessDays(now, delay[1]))}`;
 }
 
 function groupLabels(labels: string[]) {
@@ -95,8 +147,8 @@ export function orderConfirmationEmail(o: EmailOrder): RenderedEmail {
     heading("Merci pour votre commande"),
     paragraph(escapeHtml(hello(o))),
     paragraph(intro),
-    subheading("Votre commande"),
-    rows(itemLines(o)),
+    subheading(`${o.items.reduce((n, i) => n + i.quantity, 0)} article${o.items.reduce((n, i) => n + i.quantity, 0) > 1 ? "s" : ""}`),
+    productList(productItems(o)),
     rows(totalLines(o)),
     subheading("Livraison"),
     addressBlock(deliveryLines(o)),
@@ -119,7 +171,7 @@ export function orderConfirmationEmail(o: EmailOrder): RenderedEmail {
   return { subject, html: layout({ preheader: `Commande n° ${o.order_number} confirmée.`, body }), text };
 }
 
-export function orderShippedEmail(o: EmailOrder): RenderedEmail {
+export function orderShippedEmail(o: EmailOrder, now: Date = new Date()): RenderedEmail {
   const pickup = o.carrier === "pickup";
   const link = trackingLink(o.carrier, o.tracking_number, o.tracking_url, deliveryPostalCode(o.relay_point, o.shipping_address));
   const subject = pickup ? `Votre commande n° ${o.order_number} est prête` : `Votre commande n° ${o.order_number} est en route`;
@@ -127,15 +179,17 @@ export function orderShippedEmail(o: EmailOrder): RenderedEmail {
     ? `Votre commande <strong>n° ${o.order_number}</strong> est prête. Nous vous contacterons pour convenir du retrait.${paysCashOnPickup(o) ? ` Pensez à prévoir ${formatPrice(o.total_cents)} en espèces.` : ""}`
     : `Bonne nouvelle : votre commande <strong>n° ${o.order_number}</strong> vient d'être confiée à ${escapeHtml(CARRIER_LABELS[o.carrier ?? ""] ?? "notre transporteur")}.`;
   const tracking = o.tracking_number ? `Numéro de suivi : ${o.tracking_number}` : null;
+  const eta = pickup ? null : estimatedDelivery(o, now);
   const body = [
     heading(pickup ? "Votre commande est prête" : "Votre commande est en route"),
     paragraph(escapeHtml(hello(o))),
     paragraph(intro),
+    eta ? highlight("Livraison estimée", [eta]) : "",
     tracking ? paragraph(escapeHtml(tracking)) : "",
     link ? button("Suivre mon colis", link) : "",
     o.relay_point ? small("Vous recevrez un message de Mondial Relay quand votre colis sera arrivé au point relais. Pensez à votre pièce d'identité.") : "",
     subheading("Contenu du colis"),
-    rows(itemLines(o)),
+    productList(productItems(o)),
     pickup ? "" : subheading("Livraison"),
     pickup ? "" : addressBlock(deliveryLines(o)),
     o.user_id ? small(`<a href="${escapeHtml(orderLink(o))}" style="color:inherit">Voir ma commande</a>`) : "",
@@ -144,6 +198,7 @@ export function orderShippedEmail(o: EmailOrder): RenderedEmail {
     hello(o),
     "",
     intro.replace(/<[^>]+>/g, ""),
+    eta ? `Livraison estimée : ${eta}` : "",
     tracking ?? "",
     link ? `Suivre mon colis : ${link}` : "",
     "",

@@ -23,7 +23,34 @@ export function siteUrl(path = ""): string {
 export const paragraph = (html: string) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${COLORS.ink}">${html}</p>`;
 export const small = (html: string) => `<p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:${COLORS.muted}">${html}</p>`;
 export const heading = (text: string) =>
-  `<h1 style="margin:0 0 20px;font-size:22px;font-weight:400;letter-spacing:0.04em;color:${COLORS.ink}">${escapeHtml(text)}</h1>`;
+  `<h1 style="margin:0 0 20px;font-size:19px;font-weight:400;letter-spacing:0.14em;line-height:1.4;text-transform:uppercase;color:${COLORS.ink}">${escapeHtml(text)}</h1>`;
+
+/** Encadré mis en avant (date de livraison estimée…) : petit titre en capitales, puis le texte. */
+export const highlight = (title: string, lines: string[]) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr><td style="padding:16px 18px;background:${COLORS.ivory};border:1px solid ${COLORS.sand}">
+<p style="margin:0 0 6px;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:${COLORS.muted}">${escapeHtml(title)}</p>
+${lines.map((l) => `<p style="margin:0;font-size:15px;line-height:1.5;letter-spacing:0.04em;text-transform:uppercase;color:${COLORS.ink}">${escapeHtml(l)}</p>`).join("")}
+</td></tr></table>`;
+
+/** Articles avec leur photo (comme une fiche de commande en boutique). */
+export function productList(items: { imageUrl?: string | null; name: string; lines: string[]; value: string }[]): string {
+  const body = items
+    .map(
+      (i) => `<tr>
+<td width="76" style="padding:12px 12px 12px 0;border-bottom:1px solid ${COLORS.sand};vertical-align:top">${
+        i.imageUrl
+          ? `<img src="${escapeHtml(i.imageUrl)}" width="64" height="85" alt="" style="display:block;border:0;width:64px;height:85px;object-fit:cover;background:${COLORS.sand}">`
+          : `<div style="width:64px;height:85px;background:${COLORS.sand}"></div>`
+      }</td>
+<td style="padding:12px 0;border-bottom:1px solid ${COLORS.sand};vertical-align:top;font-size:13px;line-height:1.5;color:${COLORS.ink}">
+<span style="letter-spacing:0.08em;text-transform:uppercase">${escapeHtml(i.name)}</span>${i.lines.map((l) => `<br><span style="color:${COLORS.muted}">${escapeHtml(l)}</span>`).join("")}
+</td>
+<td style="padding:12px 0 12px 12px;border-bottom:1px solid ${COLORS.sand};vertical-align:top;text-align:right;white-space:nowrap;font-size:13px;color:${COLORS.ink}">${escapeHtml(i.value)}</td>
+</tr>`,
+    )
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 8px">${body}</table>`;
+}
 export const subheading = (text: string) =>
   `<h2 style="margin:28px 0 12px;font-size:12px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:${COLORS.muted}">${escapeHtml(text)}</h2>`;
 
@@ -66,6 +93,16 @@ export function layout({ preheader, body, footer }: { preheader: string; body: s
 <tr><td align="center" style="padding:20px 8px;font-size:12px;line-height:1.6;color:${COLORS.muted}">
 ${footer ?? "Une question ? Répondez simplement à cet e-mail."}<br>
 <a href="${escapeHtml(siteUrl("/"))}" style="color:${COLORS.muted}">Youna Collection</a>
+</td></tr>
+<tr><td align="center" style="padding:0 8px 24px;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;line-height:2">
+${[
+  ["Service client", "/sav"],
+  ["Livraison et retours", "/livraison-retours"],
+  ["CGV", "/cgv"],
+  ["Confidentialité", "/confidentialite"],
+]
+  .map(([label, path]) => `<a href="${escapeHtml(siteUrl(path))}" style="color:${COLORS.muted};text-decoration:none">${escapeHtml(label)}</a>`)
+  .join(`<span style="color:${COLORS.sand}">&nbsp;&nbsp;·&nbsp;&nbsp;</span>`)}
 </td></tr>
 </table></td></tr></table></body></html>`;
 }

@@ -56,10 +56,13 @@ describe("contenu des e-mails", () => {
   it("confirme la commande avec les articles, les voiles, les totaux et le point relais", () => {
     const email = orderConfirmationEmail(order);
     expect(email.subject).toBe("Merci pour votre commande n° 2042");
-    for (const text of ["2 × Liquid Jersey — Noir", "Voiles : 2 × Noir, Misty", "Réduction (BIENVENUE)", "Tabac du Centre", "75001 Paris"]) {
+    for (const text of ["Voiles : 2 × Noir, Misty", "Réduction (BIENVENUE)", "Tabac du Centre", "75001 Paris"]) {
       expect(email.html).toContain(text);
       expect(email.text).toContain(text);
     }
+    expect(email.text).toContain("2 × Liquid Jersey — Noir");
+    expect(email.html).toContain("Liquid Jersey");
+    expect(email.html).toContain("3 articles");
     expect(email.html).toContain("/inscription");
   });
 
@@ -112,5 +115,25 @@ describe("suivi et exports", () => {
     expect(csvCell("=SOMME(A1)")).toBe(`"'=SOMME(A1)"`);
     expect(csvCell('Dit "bonjour"')).toBe(`"Dit ""bonjour"""`);
     expect(csvCell(null)).toBe(`""`);
+  });
+});
+
+describe("e-mails façon fiche de commande", () => {
+  it("annonce la livraison estimée en jours ouvrés (Mondial Relay : 3 à 5 jours)", async () => {
+    const { estimatedDelivery } = await import("@/lib/email/templates");
+    // Samedi 14 novembre 2026 : +3 jours ouvrés = mercredi 18, +5 = vendredi 20.
+    expect(estimatedDelivery(order, new Date("2026-11-14T15:00:00Z"))).toBe("mercredi 18 novembre – vendredi 20 novembre");
+    expect(estimatedDelivery({ ...order, carrier: "pickup" }, new Date("2026-11-14T15:00:00Z"))).toBeNull();
+    const shipped = orderShippedEmail(order, new Date("2026-11-14T15:00:00Z"));
+    expect(shipped.html).toContain("Livraison estimée");
+    expect(shipped.text).toContain("mercredi 18 novembre – vendredi 20 novembre");
+  });
+
+  it("montre la photo de chaque article et les liens utiles en bas", () => {
+    const withPhoto = { ...order, items: [{ ...order.items[0], image_url: "https://img.test/noir.jpg" }] };
+    const { html } = orderConfirmationEmail(withPhoto);
+    expect(html).toContain('src="https://img.test/noir.jpg"');
+    expect(html).toContain("Quantité : 2");
+    expect(html).toContain("/cgv");
   });
 });

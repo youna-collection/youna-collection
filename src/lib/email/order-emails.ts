@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "../supabase/admin";
+import { productImageUrl } from "../catalog";
 import { sendEmail, shopEmail } from "./send";
 import { adminNewOrderEmail, adminSoldOutEmail, type EmailOrder, orderConfirmationEmail, orderRefundedEmail, orderShippedEmail } from "./templates";
 
@@ -19,7 +20,36 @@ type LoadedOrder = Omit<EmailOrder, "items"> & {
 
 async function loadOrder(orderId: string): Promise<LoadedOrder | null> {
   const { data } = await createAdminClient().from("orders").select(ORDER_SELECT).eq("id", orderId).maybeSingle();
-  return (data as unknown as LoadedOrder | null) ?? null;
+  const order = (data as unknown as LoadedOrder | null) ?? null;
+  if (order) await attachImages(order);
+  return order;
+}
+
+/** Photo de chaque article : celle de la couleur commandée, sinon la première du produit. Jamais bloquant. */
+async function attachImages(order: LoadedOrder) {
+  try {
+    const ids = [...new Set(order.items.map((i) => i.variant_id).filter((id): id is string => Boolean(id)))];
+    if (!ids.length) return;
+    const admin = createAdminClient();
+    const { data: variants } = await admin.from("product_variants").select("id, product_id").in("id", ids);
+    const productOf = new Map((variants ?? []).map((v) => [v.id as string, v.product_id as string]));
+    const productIds = [...new Set(productOf.values())];
+    if (!productIds.length) return;
+    const { data: images } = await admin
+      .from("product_images")
+      .select("product_id, variant_id, storage_path, position")
+      .in("product_id", productIds)
+      .order("position");
+    const list = (images ?? []) as { product_id: string; variant_id: string | null; storage_path: string }[];
+    for (const item of order.items) {
+      if (!item.variant_id) continue;
+      const image =
+        list.find((i) => i.variant_id === item.variant_id) ?? list.find((i) => i.product_id === productOf.get(item.variant_id!));
+      item.image_url = image ? productImageUrl(image.storage_path) : null;
+    }
+  } catch (error) {
+    console.error("E-mails (photos)", error instanceof Error ? error.message : error);
+  }
 }
 
 async function safely(label: string, task: () => Promise<unknown>) {
