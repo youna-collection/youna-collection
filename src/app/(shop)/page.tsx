@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ProductGrid } from "@/components/product-card";
-import { getCategories, getProducts, inCategory } from "@/lib/catalog";
+import { getCategories, getProducts, inCategory, productImageUrl } from "@/lib/catalog";
+import { getHomeHeroPath } from "@/lib/shop-info";
 import { defaultVariant, imagesForVariant, isInStock, type Product } from "@/lib/product";
 
 export const revalidate = 300;
@@ -21,7 +22,7 @@ function spread<T>(items: T[], count: number): T[] {
 }
 
 export default async function HomePage() {
-  const [categories, products] = await Promise.all([getCategories(), getProducts()]);
+  const [categories, products, heroPath] = await Promise.all([getCategories(), getProducts(), getHomeHeroPath()]);
 
   // La palette mise en avant : le produit qui a le plus de couleurs.
   const palette = [...products].sort((a, b) => colorTiles(b).length - colorTiles(a).length)[0];
@@ -40,7 +41,12 @@ export default async function HomePage() {
   return (
     <main>
       <section className="border-b border-sand bg-paper">
-        {heroTiles.length >= 3 ? (
+        {heroPath ? (
+          // Photo choisie par l'admin (Paramètres > Photo de la page d'accueil).
+          <div className="relative aspect-[4/5] w-full bg-photo sm:aspect-[16/9] lg:aspect-[21/9]">
+            <Image src={productImageUrl(heroPath)} alt="" fill priority sizes="100vw" className="object-cover" />
+          </div>
+        ) : heroTiles.length >= 3 ? (
           <div className={`grid grid-cols-3 ${heroTiles.length >= 5 ? "md:grid-cols-5" : ""}`} aria-hidden>
             {heroTiles.map(({ variant, image }, i) => (
               <div key={variant.id} className={`relative aspect-[2/3] bg-photo ${i >= 3 ? "hidden md:block" : ""}`}>

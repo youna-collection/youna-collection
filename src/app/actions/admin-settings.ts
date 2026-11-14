@@ -119,6 +119,47 @@ export async function setMaintenance(input: z.input<typeof maintenanceSchema>): 
   };
 }
 
+const heroPath = z
+  .string()
+  .regex(/^home\/[a-f0-9]{16}\.(webp|jpg)$/)
+  .nullable();
+
+/** Photo de la page d'accueil : nouvelle photo déjà envoyée dans le stockage, ou null pour revenir aux photos des produits. */
+export async function setHomeHero(path: string | null): Promise<SettingsState> {
+  await requireAdmin();
+  const parsed = heroPath.safeParse(path);
+  if (!parsed.success) return { status: "error", message: "Photo invalide." };
+  const supabase = await createClient();
+  const { data: before } = await supabase.from("shop_settings").select("home_hero_path").eq("id", 1).maybeSingle<{ home_hero_path: string | null }>();
+  const { error } = await supabase.from("shop_settings").update({ home_hero_path: parsed.data }).eq("id", 1);
+  if (error) return { status: "error", message: "La photo n'a pas pu être enregistrée." };
+  // L'ancienne photo ne sert plus à rien.
+  const old = before?.home_hero_path;
+  if (old && old !== parsed.data) await supabase.storage.from("product-images").remove([old]);
+  updateTag(SHOP_INFO_TAG);
+  revalidatePath("/");
+  revalidatePath("/admin/parametres");
+  return {
+    status: "success",
+    message: parsed.data ? "Photo enregistrée : elle s'affiche sur la page d'accueil." : "Photo retirée : l'accueil montre de nouveau les photos des produits.",
+  };
+}
+
+/** Compte obligatoire pour passer commande, ou commande possible sans compte. */
+export async function setCheckoutLoginRequired(required: boolean): Promise<SettingsState> {
+  await requireAdmin();
+  if (typeof required !== "boolean") return { status: "error", message: "Demande invalide." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("shop_settings").update({ checkout_login_required: required }).eq("id", 1);
+  if (error) return { status: "error", message: "Le changement n'a pas pu être enregistré." };
+  updateTag(SHOP_INFO_TAG);
+  revalidatePath("/admin/parametres");
+  return {
+    status: "success",
+    message: required ? "Les clientes doivent maintenant se connecter pour commander." : "Les clientes peuvent commander sans compte.",
+  };
+}
+
 const reminderSchema = z.object({ enabled: z.boolean(), second: z.boolean() });
 
 /** Rappels de panier abandonné : activés ou non, et deuxième rappel à 3 jours. */

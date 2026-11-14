@@ -22,6 +22,11 @@ export default async function LoginPage({ searchParams }: PageProps<"/connexion"
   return (
     <AuthCard title="Connexion">
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {params.raison === "commande" ? (
+        <p className="border border-ink bg-white p-3 text-sm">
+          Pour commander, connectez-vous ou créez votre compte en quelques secondes. Votre panier est gardé.
+        </p>
+      ) : null}
 
       <ActionForm action={signIn} submitLabel="Se connecter">
         <input type="hidden" name="next" value={next} />

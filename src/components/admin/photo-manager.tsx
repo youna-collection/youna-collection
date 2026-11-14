@@ -5,28 +5,10 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { addProductImages, deleteProductImage, reorderProductImages, updateProductImage } from "@/app/actions/admin-products";
 import type { AdminImage } from "@/lib/admin/products";
+import { preparePhoto, randomName } from "@/lib/prepare-photo";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 
 const MAX_SIDE = 1800;
-
-/** Réduit la photo (1800 px maximum) et la convertit en WebP, ou en JPEG si le navigateur ne sait pas faire. */
-async function prepare(file: File): Promise<{ blob: Blob; ext: "webp" | "jpg" }> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const toBlob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
-  const webp = await toBlob("image/webp");
-  if (webp && webp.type === "image/webp") return { blob: webp, ext: "webp" };
-  const jpeg = await toBlob("image/jpeg");
-  if (!jpeg) throw new Error("conversion");
-  return { blob: jpeg, ext: "jpg" };
-}
-
-const randomName = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, "0")).join("");
 
 type VariantOption = { id: string; label: string };
 
@@ -56,7 +38,7 @@ export function PhotoManager({
     for (const [index, file] of list.entries()) {
       setProgress(`Envoi de la photo ${index + 1} sur ${list.length}…`);
       try {
-        const { blob, ext } = await prepare(file);
+        const { blob, ext } = await preparePhoto(file, MAX_SIDE);
         const path = `products/${productId}/${randomName()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-images")

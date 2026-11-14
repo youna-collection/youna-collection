@@ -58,3 +58,14 @@ const getSettingsRow = unstable_cache(
 export async function getShopInfo(): Promise<ShopInfo> {
   return toShopInfo(await getSettingsRow());
 }
+
+/** Photo de la page d'accueil choisie dans Paramètres (chemin dans le stockage), sinon null. */
+export async function getHomeHeroPath(): Promise<string | null> {
+  return (await getSettingsRow())?.home_hero_path ?? null;
+}
+
+/** Faut-il un compte pour commander ? (case de Paramètres ; non par défaut) */
+export async function isLoginRequiredForCheckout(): Promise<boolean> {
+  const row = (await getSettingsRow()) as Record<string, unknown> | null;
+  return row?.checkout_login_required === true;
+}

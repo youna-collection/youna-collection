@@ -10,6 +10,7 @@ import { getShippingMethods } from "@/lib/catalog";
 import { applyPromo, normalizePromoCode, type Promo, promoError } from "@/lib/promo";
 import { getServicePoint, isSendcloudConfigured } from "@/lib/sendcloud";
 import { quote } from "@/lib/shipping";
+import { isLoginRequiredForCheckout } from "@/lib/shop-info";
 import { getShopStatus, MAINTENANCE_MESSAGE } from "@/lib/shop-status";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -60,6 +61,9 @@ const field = (formData: FormData, name: string) => {
 export async function startCheckout(_: ActionState, formData: FormData): Promise<ActionState> {
   if (!isStripeConfigured) return fail("Le paiement n'est pas encore configuré.");
   if ((await getShopStatus()).maintenance) return fail(MAINTENANCE_MESSAGE);
+  if ((await isLoginRequiredForCheckout()) && !(await getCurrentUser())) {
+    return fail("Connectez-vous ou créez votre compte pour commander : votre panier est gardé.");
+  }
 
   const parsed = schema.safeParse(Object.fromEntries(Object.keys(schema.shape).map((key) => [key, field(formData, key)])));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Formulaire incomplet.");

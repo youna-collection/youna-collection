@@ -6,12 +6,13 @@ import { SyncCartCount } from "@/components/cart-link";
 import { getCart } from "@/lib/cart";
 import { getShippingMethods } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
+import { getCurrentUser } from "@/lib/auth";
+import { isLoginRequiredForCheckout } from "@/lib/shop-info";
 
 export const metadata: Metadata = { title: "Panier" };
 
 export default async function CartPage() {
-  const cart = await getCart();
-  const methods = await getShippingMethods();
+  const [cart, methods, loginRequired, user] = await Promise.all([getCart(), getShippingMethods(), isLoginRequiredForCheckout(), getCurrentUser()]);
   const cheapest = Math.min(...methods.flatMap((method) => method.rates.filter((rate) => rate.priceCents > 0).map((rate) => rate.priceCents)));
 
   return (
@@ -78,6 +79,7 @@ export default async function CartPage() {
               Livraison calculée à l&apos;étape suivante
               {Number.isFinite(cheapest) ? `, à partir de ${formatPrice(cheapest)}` : ""}. Click &amp; collect gratuit.
             </p>
+            {loginRequired && !user ? <p className="text-sm text-muted">Vous vous connecterez (ou créerez votre compte) à l&apos;étape suivante.</p> : null}
             {cart.canCheckout ? (
               <Link href="/commande" className="flex min-h-12 items-center justify-center bg-ink px-6 text-sm tracking-widest text-ivory uppercase">
                 Commander

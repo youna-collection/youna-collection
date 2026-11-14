@@ -7,13 +7,16 @@ import { getCurrentProfile } from "@/lib/auth";
 import { getCart } from "@/lib/cart";
 import { getShippingMethods } from "@/lib/catalog";
 import { shippingCountries } from "@/lib/shipping";
+import { isLoginRequiredForCheckout } from "@/lib/shop-info";
 
 export const metadata: Metadata = { title: "Commande" };
 
 export default async function CheckoutPage() {
   const cart = await getCart();
   if (!cart.lines.length || !cart.canCheckout) redirect("/panier");
-  const [methods, profile] = await Promise.all([getShippingMethods(), getCurrentProfile()]);
+  const [methods, profile, loginRequired] = await Promise.all([getShippingMethods(), getCurrentProfile(), isLoginRequiredForCheckout()]);
+  // Réglage de l'admin : compte obligatoire. Le panier est gardé et rattaché au compte à la connexion.
+  if (loginRequired && !profile) redirect("/connexion?next=/commande&raison=commande");
   const addresses = profile ? await getMyAddresses() : [];
   const main = addresses.find((a) => a.is_default) ?? addresses[0];
 

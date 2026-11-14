@@ -3,10 +3,12 @@ import Link from "next/link";
 import { saveShopSettings, saveSocialAndMediator } from "@/app/actions/admin-settings";
 import { ActionForm } from "@/components/action-form";
 import { EmailSetupNotice } from "@/components/admin/email-list";
+import { CheckoutLoginSetting, HomeHeroSettings } from "@/components/admin/home-settings";
 import { MaintenanceSwitch } from "@/components/admin/maintenance-switch";
 import { ReminderSettings } from "@/components/admin/reminder-settings";
 import { emailSetup } from "@/lib/admin/emails";
 import { getShopSettings, sellerComplete, type ShopSettings } from "@/lib/admin/orders";
+import { productImageUrl } from "@/lib/catalog";
 import { DEFAULT_CONTACT_EMAIL } from "@/lib/shop-info";
 
 export const metadata: Metadata = { title: "Paramètres" };
@@ -21,7 +23,7 @@ function Field({
   hint,
   required,
   ...props
-}: { name: Exclude<keyof ShopSettings, "maintenance_enabled" | "cart_reminders_enabled" | "cart_reminder_second">; label: string; settings: ShopSettings | null; hint?: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: { name: Exclude<keyof ShopSettings, "maintenance_enabled" | "cart_reminders_enabled" | "cart_reminder_second" | "checkout_login_required" | "home_hero_path">; label: string; settings: ShopSettings | null; hint?: string; required?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-sm text-muted">
@@ -37,7 +39,6 @@ function Field({
 export default async function SettingsPage() {
   const settings = await getShopSettings();
   const complete = sellerComplete(settings);
-
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <h1 className="text-xl">Paramètres</h1>
@@ -49,6 +50,16 @@ export default async function SettingsPage() {
           title={settings?.maintenance_title ?? null}
           message={settings?.maintenance_message ?? null}
         />
+      </section>
+
+      <section id="accueil" className="flex scroll-mt-24 flex-col gap-3 border border-sand bg-ivory p-4">
+        <h2 className="text-lg">Photo de la page d&apos;accueil</h2>
+        <HomeHeroSettings heroUrl={settings?.home_hero_path ? productImageUrl(settings.home_hero_path) : null} />
+      </section>
+
+      <section id="commande" className="flex scroll-mt-24 flex-col gap-3 border border-sand bg-ivory p-4">
+        <h2 className="text-lg">Commande</h2>
+        <CheckoutLoginSetting required={settings?.checkout_login_required ?? false} />
       </section>
 
       <section id="emails" className="flex scroll-mt-24 flex-col gap-3 border border-sand bg-ivory p-4">
