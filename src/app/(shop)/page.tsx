@@ -29,6 +29,12 @@ const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: nu
   productSlug: "liquid-silk-signature",
 };
 
+/** Sous les voiles : les prochaines pièces, en aperçu (images envoyées par Youna). Vider la liste pour enlever la partie. */
+const COMING_SOON = [
+  { image: "/images/bientot-gilet-zippe.webp", alt: "Gilet zippé col montant en maille, coloris prune et gris anthracite", width: 1200, height: 1097 },
+  { image: "/images/bientot-pantalon-portefeuille.webp", alt: "Pantalon large à jupe portefeuille nouée, coloris beige et noir", width: 1200, height: 1280 },
+];
+
 /** Les couleurs d'un produit qui ont leur propre photo. */
 function colorTiles(product: Product) {
   return product.variants
@@ -161,6 +167,29 @@ export default async function HomePage() {
           />
         </section>
       ))}
+
+      {COMING_SOON.length ? (
+        <section className="mx-auto max-w-6xl px-4 pt-16" aria-labelledby="bientot">
+          <h2 id="bientot" className="mb-8 text-center text-sm tracking-[0.3em] uppercase">
+            Bientôt disponible
+          </h2>
+          <ul className="grid gap-6 sm:grid-cols-2">
+            {COMING_SOON.map((item) => (
+              <li key={item.image} className="flex items-center justify-center">
+                {/* Images au fond beige du site (#f6f1e9), préparées ainsi pour se fondre dans la page. */}
+                <Image
+                  src={item.image}
+                  alt={item.alt}
+                  width={item.width}
+                  height={item.height}
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  className="h-auto w-full max-w-lg"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {clothes.length ? (
         <section className="mx-auto max-w-6xl px-4 pt-16" aria-labelledby="vetements">
