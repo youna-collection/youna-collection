@@ -27,9 +27,13 @@ export function Countdown({ target }: { target: string }) {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    setNow(Date.now());
-    const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(tick);
+    const update = () => setNow(Date.now());
+    const first = setTimeout(update, 0);
+    const tick = setInterval(update, 1000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(tick);
+    };
   }, []);
 
   const done = now !== null && now >= end;
