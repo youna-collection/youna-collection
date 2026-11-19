@@ -35,7 +35,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           .flatMap((p) =>
             p.variants.filter(isInStock).map((v) => ({
               id: v.id,
-              label: [p.name, v.colorName].filter(Boolean).join(" "),
+              label: [p.name, v.colorName, v.size].filter(Boolean).join(" "),
               colorHex: v.colorHex,
               available: v.available,
               trackStock: v.trackStock,

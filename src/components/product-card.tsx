@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { defaultVariant, imagesForVariant, priceRange, type Product } from "@/lib/product";
+import { colorGroups, defaultVariant, imagesForVariant, priceRange, type Product } from "@/lib/product";
 import { Price } from "./price";
 
 const MAX_SWATCHES = 6;
@@ -9,7 +9,7 @@ export function ProductCard({ product, priority = false }: { product: Product; p
   const variant = defaultVariant(product);
   const image = imagesForVariant(product, variant?.id ?? null)[0];
   const range = priceRange(product.variants);
-  const swatches = product.variants.filter((v) => v.colorHex);
+  const swatches = colorGroups(product).filter((color) => color.hex);
   const allSoldOut = product.variants.every((v) => v.trackStock && v.available <= 0);
 
   return (
@@ -43,12 +43,12 @@ export function ProductCard({ product, priority = false }: { product: Product; p
 
       {swatches.length > 1 ? (
         <div className="mt-2 flex items-center gap-1.5" aria-label={`${swatches.length} couleurs`}>
-          {swatches.slice(0, MAX_SWATCHES).map((v) => (
+          {swatches.slice(0, MAX_SWATCHES).map((color) => (
             <span
-              key={v.id}
-              title={v.colorName ?? undefined}
+              key={color.slug}
+              title={color.name}
               className="size-3 rounded-full border border-black/10"
-              style={{ backgroundColor: v.colorHex ?? undefined }}
+              style={{ backgroundColor: color.hex ?? undefined }}
             />
           ))}
           {swatches.length > MAX_SWATCHES ? (

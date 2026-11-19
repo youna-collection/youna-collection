@@ -6,10 +6,13 @@ import { useState, useTransition } from "react";
 import { addToCart } from "@/app/actions/cart";
 import {
   LOW_STOCK,
+  colorGroups,
   imagesForVariant,
   isInStock,
+  sizeOptions,
   variantLabel,
   variantQuery,
+  type ColorGroup,
   type Product,
   type ProductImage,
   type Variant,
@@ -70,32 +73,33 @@ function StockLine({ variant }: { variant: Variant }) {
   return <p className="text-sm text-success">En stock</p>;
 }
 
-function ColorPicker({ product, selected, onSelect }: { product: Product; selected: Variant; onSelect: (v: Variant) => void }) {
+function ColorPicker({ groups, selected, onSelect }: { groups: ColorGroup[]; selected: Variant; onSelect: (group: ColorGroup) => void }) {
   return (
     <fieldset>
       <legend className="text-sm">
         Couleur : <span className="text-muted">{selected.colorName}</span>
       </legend>
       <div className="mt-3 flex flex-wrap gap-2" role="radiogroup">
-        {product.variants.map((variant) => {
-          const active = variant.id === selected.id;
-          const soldOut = !isInStock(variant);
+        {groups.map((group) => {
+          const active = group.slug === selected.colorSlug;
+          // Une couleur est épuisée quand toutes ses tailles le sont.
+          const soldOut = !group.variants.some(isInStock);
           return (
             <button
-              key={variant.id}
+              key={group.slug}
               type="button"
               role="radio"
               aria-checked={active}
-              aria-label={`${variant.colorName}${soldOut ? " (épuisé)" : ""}`}
-              title={variant.colorName ?? undefined}
-              onClick={() => onSelect(variant)}
+              aria-label={`${group.name}${soldOut ? " (épuisé)" : ""}`}
+              title={group.name}
+              onClick={() => onSelect(group)}
               className={`relative flex size-11 items-center justify-center rounded-full ${
                 active ? "ring-1 ring-ink ring-offset-2 ring-offset-ivory" : ""
               }`}
             >
               <span
                 className="size-9 rounded-full border border-black/10"
-                style={{ backgroundColor: variant.colorHex ?? "#ccc" }}
+                style={{ backgroundColor: group.hex ?? "#ccc" }}
               />
               {soldOut ? (
                 <span aria-hidden className="absolute h-px w-10 rotate-45 bg-ink/60" />
@@ -108,26 +112,31 @@ function ColorPicker({ product, selected, onSelect }: { product: Product; select
   );
 }
 
-function SizePicker({ product, selected, onSelect }: { product: Product; selected: Variant; onSelect: (v: Variant) => void }) {
+function SizePicker({ options, selected, onSelect }: { options: Variant[]; selected: Variant; onSelect: (v: Variant) => void }) {
   return (
     <fieldset>
-      <legend className="text-sm">Taille</legend>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup">
-        {product.variants.map((variant) => {
+      <legend className="text-sm">
+        Taille : <span className="text-muted">{selected.size}</span>
+      </legend>
+      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup">
+        {options.map((variant) => {
           const active = variant.id === selected.id;
+          const soldOut = !isInStock(variant);
           return (
             <button
               key={variant.id}
               type="button"
               role="radio"
               aria-checked={active}
+              aria-label={`${variant.size}${soldOut ? " (épuisé)" : ""}`}
               onClick={() => onSelect(variant)}
-              disabled={!isInStock(variant)}
+              disabled={soldOut}
               className={`min-h-12 border px-2 text-sm disabled:text-muted disabled:line-through ${
                 active ? "border-ink bg-ink text-ivory" : "border-sand"
               }`}
             >
-              {variantLabel(variant)}
+              {/* Bouquet : « XL · 6 voiles » ; vêtement : la taille seule (la couleur est choisie au-dessus). */}
+              {variant.bouquetVeilCount ? variantLabel(variant) : variant.size}
             </button>
           );
         })}
@@ -270,9 +279,18 @@ export function ProductView({
   const [selectedId, setSelectedId] = useState(initialVariantId);
   const [picks, setPicks] = useState<string[]>([]);
   const selected = product.variants.find((variant) => variant.id === selectedId) ?? product.variants[0];
-  const hasColors = product.variants.some((variant) => variant.colorName);
-  const hasSizes = product.variants.length > 1 && product.variants.some((variant) => variant.size);
+  const groups = colorGroups(product);
+  const sizes = sizeOptions(product, selected);
+  const showColors = groups.length > 0 && product.variants.length > 1;
+  const showSizes = sizes.length > 0 && product.variants.length > 1;
   const veilCount = product.kind === "bouquet" ? (selected.bouquetVeilCount ?? 0) : 0;
+
+  /** Autre couleur : on garde la même taille si elle existe et reste disponible. */
+  function selectColor(group: ColorGroup) {
+    const sameSize = group.variants.find((variant) => variant.sizeSlug === selected.sizeSlug);
+    const next = (sameSize && isInStock(sameSize) ? sameSize : null) ?? group.variants.find(isInStock) ?? sameSize ?? group.variants[0];
+    select(next);
+  }
 
   function select(variant: Variant) {
     setSelectedId(variant.id);
@@ -284,7 +302,8 @@ export function ProductView({
 
   return (
     <div className="grid gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:gap-12">
-      <Gallery key={selected.id} images={imagesForVariant(product, selected.id)} productName={product.name} />
+      {/* Changer de taille garde la même photo ; changer de couleur repart de la première photo. */}
+      <Gallery key={selected.colorSlug ?? selected.id} images={imagesForVariant(product, selected.id)} productName={product.name} />
 
       <div className="flex flex-col gap-6 md:sticky md:top-28 md:self-start">
         <div className="flex flex-col gap-3">
@@ -295,8 +314,8 @@ export function ProductView({
           <Price cents={selected.priceCents} compareAtCents={selected.compareAtPriceCents} large />
         </div>
 
-        {hasColors && product.variants.length > 1 ? <ColorPicker product={product} selected={selected} onSelect={select} /> : null}
-        {hasSizes ? <SizePicker product={product} selected={selected} onSelect={select} /> : null}
+        {showColors ? <ColorPicker groups={groups} selected={selected} onSelect={selectColor} /> : null}
+        {showSizes ? <SizePicker options={sizes} selected={selected} onSelect={select} /> : null}
 
         <StockLine variant={selected} />
 

@@ -56,6 +56,14 @@ describe("page catégorie", () => {
     expect(modelsOf(tiles).map((m) => [m.slug, m.count])).toEqual([["liquid-jersey", 2], ["liquid-silk", 1], ["bouquet", 1]]);
   });
 
+  it("une couleur en plusieurs tailles ne fait qu'une vignette", () => {
+    const abaya = product("abaya", [variant("a1", "Noir", 4500, 0, "S"), variant("a2", "Noir", 4900, 3, "M"), variant("a3", "Sable", 4500, 0, "S")]);
+    const [noir, sable] = buildTiles([abaya]);
+    expect(buildTiles([abaya])).toHaveLength(2);
+    expect(noir).toMatchObject({ subtitle: "Noir", href: "/produits/abaya?couleur=noir", priceCents: 4500, from: true, inStock: true });
+    expect(sable).toMatchObject({ subtitle: "Sable", inStock: false, from: false });
+  });
+
   it("filtres lus dans l'adresse, en ignorant les valeurs inconnues", () => {
     const filters = parseFilters({ modele: "liquid-silk,inconnu", stock: "1", tri: "prix-asc" }, ["liquid-jersey", "liquid-silk"]);
     expect(filters).toEqual({ models: ["liquid-silk"], inStockOnly: true, sort: "prix-asc" });

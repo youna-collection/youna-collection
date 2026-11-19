@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { formatPrice } from "@/lib/format";
+import { variantDisplayLabel } from "@/lib/cart-rules";
 import {
+  colorGroups,
   defaultVariant,
   findVariant,
   imagesForVariant,
   isInStock,
   priceRange,
+  sizeOptions,
   variantLabel,
   variantQuery,
   type Product,
@@ -94,6 +97,38 @@ describe("photos", () => {
   it("utilise la photo d'une autre couleur si la variante n'en a pas", () => {
     const p = product([noir, matcha], [image("a", "noir")]);
     expect(imagesForVariant(p, "matcha").map((i) => i.id)).toEqual(["a"]);
+  });
+});
+
+describe("couleurs en plusieurs tailles", () => {
+  const noirS = variant("noir-s", { colorName: "Noir", colorSlug: "noir", size: "S", sizeSlug: "s", available: 0 });
+  const noirM = variant("noir-m", { colorName: "Noir", colorSlug: "noir", size: "M", sizeSlug: "m" });
+  const sableS = variant("sable-s", { colorName: "Sable", colorSlug: "sable", colorHex: "#d8c8b0", size: "S", sizeSlug: "s" });
+  const p = product([noirS, noirM, sableS], [image("photo-noir", "noir-s"), image("photo-sable", "sable-s")]);
+
+  it("regroupe les tailles sous une seule couleur", () => {
+    expect(colorGroups(p).map((g) => [g.slug, g.variants.map((v) => v.id)])).toEqual([
+      ["noir", ["noir-s", "noir-m"]],
+      ["sable", ["sable-s"]],
+    ]);
+    expect(sizeOptions(p, noirM).map((v) => v.id)).toEqual(["noir-s", "noir-m"]);
+  });
+
+  it("une taille sans photo reprend celle de sa couleur", () => {
+    expect(imagesForVariant(p, "noir-m").map((i) => i.id)).toEqual(["photo-noir"]);
+  });
+
+  it("l'adresse retient couleur et taille ; une couleur seule ouvre sa première taille disponible", () => {
+    expect(variantQuery(noirM)).toBe("?couleur=noir&taille=m");
+    expect(findVariant(p, { couleur: "noir", taille: "s" })?.id).toBe("noir-s");
+    expect(findVariant(p, { couleur: "noir" })?.id).toBe("noir-m");
+    expect(findVariant(p, { couleur: "sable", taille: "xxl" })?.id).toBe("sable-s");
+  });
+
+  it("le libellé de commande donne la couleur et la taille", () => {
+    expect(variantLabel(noirM)).toBe("Noir · M");
+    expect(variantLabel(noir)).toBe("Noir");
+    expect(variantDisplayLabel({ colorName: "Noir", size: "M", bouquetVeilCount: null })).toBe("Noir · M");
   });
 });
 

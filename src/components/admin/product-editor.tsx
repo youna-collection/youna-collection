@@ -60,7 +60,7 @@ function toDraft(v: AdminVariant): VariantDraft {
   };
 }
 
-/** Nouvelle variante : reprend le prix et le poids de `from` ; avec `sameColor`, aussi sa couleur (duplication). */
+/** Nouvelle variante : reprend le prix et le poids de `from` ; avec `sameColor`, aussi sa couleur (autre taille). Taille vide. */
 function blankVariant(from?: VariantDraft, sameColor = false): VariantDraft {
   return {
     ...(from ?? {
@@ -82,8 +82,56 @@ function blankVariant(from?: VariantDraft, sameColor = false): VariantDraft {
     originalStock: null,
     reserved: 0,
     sku: "",
+    size: "",
     ...(sameColor ? {} : { colorName: "", colorHex: "#cccccc", hasColor: from?.hasColor ?? false }),
   } as VariantDraft;
+}
+
+/** « S, M, L » -> ["S", "M", "L"] (sans doublons). */
+function parseSizes(raw: string): string[] {
+  const sizes: string[] = [];
+  for (const part of raw.split(/[,;/\n]+/)) {
+    const size = part.trim().slice(0, 40);
+    if (size && !sizes.some((s) => s.toLowerCase() === size.toLowerCase())) sizes.push(size);
+  }
+  return sizes;
+}
+
+/**
+ * Ajoute les tailles à chaque couleur : une variante par couleur et par taille.
+ * Une variante encore sans taille prend la première taille (elle garde son stock) ; les tailles déjà présentes ne sont pas recréées.
+ */
+function withSizes(list: VariantDraft[], sizes: string[]): { variants: VariantDraft[]; added: number; assigned: number } {
+  const order: string[] = [];
+  const byColor = new Map<string, VariantDraft[]>();
+  for (const v of list) {
+    const key = v.colorName.trim().toLowerCase();
+    if (!byColor.has(key)) {
+      byColor.set(key, []);
+      order.push(key);
+    }
+    byColor.get(key)!.push({ ...v });
+  }
+  let added = 0;
+  let assigned = 0;
+  const variants: VariantDraft[] = [];
+  for (const key of order) {
+    const group = byColor.get(key)!;
+    for (const size of sizes) {
+      if (group.some((v) => v.size.trim().toLowerCase() === size.toLowerCase())) continue;
+      const unsized = group.find((v) => !v.size.trim());
+      if (unsized) {
+        unsized.size = size;
+        assigned += 1;
+      } else {
+        group.push({ ...blankVariant(group[0], true), size });
+        added += 1;
+      }
+    }
+    // Les tailles d'une même couleur se suivent.
+    variants.push(...group);
+  }
+  return { variants, added, assigned };
 }
 
 /** Date ISO -> valeur d'un champ date-heure (heure locale). */
@@ -126,6 +174,7 @@ export function ProductEditor({
   const [seoDescription, setSeoDescription] = useState(product.seo_description ?? "");
   const [variants, setVariants] = useState<VariantDraft[]>(product.variants.map(toDraft));
   const [removed, setRemoved] = useState<string[]>([]);
+  const [sizesInput, setSizesInput] = useState("");
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -170,6 +219,28 @@ export function ProductEditor({
       return next;
     });
     setDirty(true);
+  }
+
+  function addSizes() {
+    const sizes = parseSizes(sizesInput);
+    if (!sizes.length) {
+      setMessage({ ok: false, text: "Tapez les tailles, séparées par des virgules (ex. S, M, L)." });
+      return;
+    }
+    const result = withSizes(variants, sizes);
+    if (!result.added && !result.assigned) {
+      setMessage({ ok: false, text: "Ces tailles existent déjà pour toutes les couleurs." });
+      return;
+    }
+    setVariants(result.variants);
+    setSizesInput("");
+    setDirty(true);
+    setMessage({
+      ok: true,
+      text: result.added
+        ? `${result.added} taille${result.added > 1 ? "s" : ""} ajoutée${result.added > 1 ? "s" : ""} (stock à 0). Remplissez le stock de chacune, puis Enregistrer.`
+        : "Tailles posées sur les variantes. Vérifiez le stock, puis Enregistrer.",
+    });
   }
 
   function removeVariant(v: VariantDraft) {
@@ -382,11 +453,40 @@ export function ProductEditor({
           </button>
         </div>
         <p className="-mt-2 text-xs text-muted">
-          Une variante par couleur (et/ou par taille), avec son propre prix et son stock.{" "}
+          Une variante par couleur et par taille, avec son propre prix et son stock. Pour une autre taille de la même couleur, utilisez
+          « + Autre taille » sur la couleur.{" "}
           <Link href="/admin/couleurs" className="underline underline-offset-2">
             Gérer la liste des couleurs
           </Link>
         </p>
+        {kind === "standard" ? (
+          <div className="flex flex-col gap-2 border border-sand bg-ivory p-4">
+            <label className={label}>
+              Ajouter des tailles à toutes les couleurs
+              <div className="flex gap-2">
+                <input
+                  className={input}
+                  value={sizesInput}
+                  placeholder="Ex. S, M, L ou 36, 38, 40"
+                  onChange={(e) => setSizesInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addSizes();
+                    }
+                  }}
+                />
+                <button type="button" onClick={addSizes} className="min-h-11 shrink-0 bg-ink px-4 text-sm text-ivory">
+                  Ajouter
+                </button>
+              </div>
+            </label>
+            <span className="text-xs text-muted">
+              Chaque couleur reçoit une variante par taille, au même prix. Une couleur encore sans taille prend la première (elle garde son stock).
+              Les nouvelles tailles commencent à 0 en stock : remplissez-le avant d&apos;enregistrer.
+            </span>
+          </div>
+        ) : null}
         <datalist id="couleurs-liste">
           {colors.map((c) => (
             <option key={c.name} value={c.name} />
@@ -532,8 +632,9 @@ export function ProductEditor({
                       setDirty(true);
                     }}
                     className="min-h-10 px-2 text-xs"
+                    title="Ajoute juste en dessous la même couleur, au même prix, pour y taper une autre taille"
                   >
-                    Dupliquer
+                    + Autre taille
                   </button>
                   <button
                     type="button"

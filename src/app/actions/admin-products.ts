@@ -119,8 +119,16 @@ export async function saveProduct(input: ProductPayload): Promise<AdminResult> {
   const activeVariants = p.variants.filter((v) => v.isActive);
   const problem = publishProblem(p.kind, activeVariants, p.status === "active");
   if (problem) return { ok: false, error: problem };
-  const labels = activeVariants.map((v) => `${v.colorName ?? ""}|${v.size ?? ""}`.toLowerCase());
-  if (new Set(labels).size !== labels.length) return { ok: false, error: "Deux variantes ont la même couleur et la même taille." };
+  // Une couleur + une taille = une seule variante (masquées comprises : la base refuse les doublons).
+  const seen = new Set<string>();
+  for (const v of p.variants) {
+    const key = `${(v.colorName ?? "").trim()}|${(v.size ?? "").trim()}`.toLowerCase();
+    if (seen.has(key)) {
+      const name = [v.colorName, v.size].filter(Boolean).join(" · ") || "sans couleur ni taille";
+      return { ok: false, error: `Deux variantes sont « ${name} » : changez la taille ou la couleur de l'une d'elles.` };
+    }
+    seen.add(key);
+  }
 
   // La catégorie principale est la première cochée, dans l'ordre du menu.
   let categoryIds: string[] = [];

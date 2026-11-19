@@ -5,7 +5,7 @@ import { ColorMarquee } from "@/components/color-marquee";
 import { LoopVideo } from "@/components/loop-video";
 import { getProducts, inCategory, productImageUrl } from "@/lib/catalog";
 import { getHomeHero } from "@/lib/shop-info";
-import { isInStock, type Product } from "@/lib/product";
+import { colorGroups, isInStock, type Product } from "@/lib/product";
 
 export const revalidate = 300;
 
@@ -37,9 +37,9 @@ const COMING_SOON = [
 
 /** Les couleurs d'un produit qui ont leur propre photo. */
 function colorTiles(product: Product) {
-  return product.variants
-    .filter((variant) => variant.colorSlug)
-    .map((variant) => ({ variant, image: product.images.find((image) => image.variantId === variant.id) }))
+  // Une couleur en plusieurs tailles n'apparaît qu'une fois ; sa photo peut être posée sur n'importe laquelle de ses tailles.
+  return colorGroups(product)
+    .map((color) => ({ color, image: product.images.find((image) => color.variants.some((variant) => variant.id === image.variantId)) }))
     .filter((tile) => tile.image);
 }
 
@@ -111,8 +111,8 @@ export default async function HomePage() {
           </div>
         ) : heroTiles.length >= 3 ? (
           <div className={`grid grid-cols-3 ${heroTiles.length >= 5 ? "md:grid-cols-5" : ""}`} aria-hidden>
-            {heroTiles.map(({ variant, image }, i) => (
-              <div key={variant.id} className={`relative aspect-[2/3] bg-photo ${i >= 3 ? "hidden md:block" : ""}`}>
+            {heroTiles.map(({ color, image }, i) => (
+              <div key={color.slug}className={`relative aspect-[2/3] bg-photo ${i >= 3 ? "hidden md:block" : ""}`}>
                 <Image src={image!.url} alt="" fill priority sizes="(min-width: 768px) 20vw, 34vw" className="object-cover" />
               </div>
             ))}
@@ -157,12 +157,12 @@ export default async function HomePage() {
           <ColorMarquee
             label={`Couleurs ${product.name}`}
             reverse={i % 2 === 1}
-            tiles={rowTiles.map(({ variant, image }) => ({
-              key: variant.id,
-              href: `/produits/${product.slug}?couleur=${variant.colorSlug}`,
+            tiles={rowTiles.map(({ color, image }) => ({
+              key: color.slug,
+              href: `/produits/${product.slug}?couleur=${color.slug}`,
               imageUrl: image!.url,
-              label: variant.colorName ?? product.name,
-              soldOut: !isInStock(variant),
+              label: color.name || product.name,
+              soldOut: !color.variants.some(isInStock),
             }))}
           />
         </section>

@@ -1,5 +1,5 @@
 /** Page catégorie : une vignette par couleur (épuisées comprises), filtres et tri. Utilisable côté serveur comme côté navigateur. */
-import { imagesForVariant, isInStock, priceRange, variantQuery, type Product } from "./product";
+import { colorGroups, imagesForVariant, isInStock, priceRange, type Product } from "./product";
 
 export type Tile = {
   key: string;
@@ -31,23 +31,26 @@ export type Filters = { models: string[]; inStockOnly: boolean; sort: Sort };
 /** Chaque couleur visible devient une vignette ; un produit sans couleurs (tailles, bouquet) reste une seule vignette. */
 export function buildTiles(products: Product[]): Tile[] {
   return products.flatMap((product, p) => {
-    const colors = product.variants.filter((variant) => variant.colorSlug);
+    const colors = colorGroups(product);
     if (colors.length) {
-      return colors.map((variant, v) => {
-        const image = imagesForVariant(product, variant.id)[0];
+      // Une vignette par couleur, même si elle existe en plusieurs tailles.
+      return colors.map((color, c) => {
+        const first = color.variants.find(isInStock) ?? color.variants[0];
+        const image = imagesForVariant(product, first.id)[0];
+        const range = priceRange(color.variants)!;
         return {
-          key: variant.id,
-          href: `/produits/${product.slug}${variantQuery(variant)}`,
+          key: color.variants[0].id,
+          href: `/produits/${product.slug}?couleur=${color.slug}`,
           modelSlug: product.slug,
           modelName: product.name,
-          subtitle: variant.colorName,
+          subtitle: color.name,
           imageUrl: image?.url ?? null,
-          imageAlt: `${product.name} ${variant.colorName ?? ""}`.trim(),
-          priceCents: variant.priceCents,
-          compareAtCents: variant.compareAtPriceCents,
-          from: false,
-          inStock: isInStock(variant),
-          order: p * 1000 + v,
+          imageAlt: `${product.name} ${color.name}`.trim(),
+          priceCents: range.min,
+          compareAtCents: range.min === range.max ? first.compareAtPriceCents : null,
+          from: range.min !== range.max,
+          inStock: color.variants.some(isInStock),
+          order: p * 1000 + c,
         };
       });
     }

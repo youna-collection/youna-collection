@@ -53,7 +53,8 @@ export type EvaluatedCart = {
 
 export function variantDisplayLabel(variant: Pick<CartVariantInfo, "colorName" | "size" | "bouquetVeilCount">): string | null {
   if (variant.size && variant.bouquetVeilCount) return `${variant.size} · ${variant.bouquetVeilCount} voiles`;
-  return variant.colorName ?? variant.size;
+  // Couleur et taille : les deux figurent sur la commande (« Noir · M »).
+  return [variant.colorName, variant.size].filter(Boolean).join(" · ") || null;
 }
 
 export function veilLabel(variant: Pick<CartVariantInfo, "productName" | "colorName">): string {
