@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Jost } from "next/font/google";
+import { Cormorant_Garamond, Jost, Montserrat } from "next/font/google";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
@@ -14,6 +14,13 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
   weight: "400",
+});
+
+// Titres à côté des vidéos de l'accueil (« NEW DROP AW26 PART 1 »…) : Montserrat SemiBold, choix de Youna.
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  weight: "600",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +38,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${jost.variable} ${cormorant.variable} h-full antialiased`}>
+    <html lang="fr" className={`${jost.variable} ${cormorant.variable} ${montserrat.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <Suspense fallback={null}>
           <NavigationProgress />

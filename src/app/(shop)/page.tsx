@@ -9,27 +9,21 @@ import { colorGroups, defaultVariant, imagesForVariant, isInStock, type Product 
 export const revalidate = 300;
 
 /**
- * Vidéo d'accueil en test (format portrait 768 × 1344), à la place des photos d'accueil.
- * Elle remplit l'écran sous le menu : plein cadre sur téléphone ; sur ordinateur, au centre,
- * sur le fond beige du site. Mettre null pour revenir aux photos.
+ * Haut de l'accueil : une rangée par vidéo (portrait 9:16), le titre écrit à côté, sur le fond beige du site.
+ * Titres en Montserrat SemiBold noir (choix de Youna). Vider la liste pour revenir aux photos d'accueil de l'admin.
  */
-const HOME_VIDEO: string | null = "/videos/accueil.mp4";
+const HOME_VIDEOS: { src: string; label: string; title: string; href: string }[] = [
+  { src: "/videos/nouveautes.mp4", label: "Vêtements Youna Collection en vidéo", title: "NEW DROP AW26 PART 1", href: "/collections/jupes" },
+  {
+    src: "/videos/accueil.mp4",
+    label: "Voiles Liquid Silk Signature en mouvement",
+    title: "LIQUID SILK SIGNATURE",
+    href: "/collections/voiles?modele=liquid-silk-signature",
+  },
+];
 
-/** Deuxième vidéo (envoyée par Youna, 720 × 1280), montrée juste avant et à côté de la vidéo des voiles. null pour l'enlever. */
-const HOME_VIDEO_BEFORE: string | null = "/videos/nouveautes.mp4";
-
-/**
- * Sur ordinateur, à droite de la vidéo : l'annonce écrite (image de Youna, police manuscrite, fond transparent).
- * Le modèle annoncé passe aussi en premier dans les bandes de couleurs. null pour l'enlever.
- */
-const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: number; href: string; productSlug: string } | null = {
-  image: "/images/new-drop-liquid-silk-signature.png",
-  alt: "New Drop : Liquid Silk Signature",
-  width: 1089,
-  height: 385,
-  href: "/collections/voiles?modele=liquid-silk-signature",
-  productSlug: "liquid-silk-signature",
-};
+/** Modèle de voile mis en avant : son bandeau de couleurs passe en premier. null : ordre de l'admin. */
+const ANNOUNCED_MODEL: string | null = "liquid-silk-signature";
 
 /** Les couleurs d'un produit qui ont leur propre photo. */
 function colorTiles(product: Product) {
@@ -71,7 +65,7 @@ export default async function HomePage() {
     .filter((product) => inCategory(product, "voiles"))
     .map((product) => ({ product, tiles: colorTiles(product) }))
     .filter((row) => row.tiles.length > 0)
-    .sort((a, b) => Number(b.product.slug === HOME_ANNOUNCEMENT?.productSlug) - Number(a.product.slug === HOME_ANNOUNCEMENT?.productSlug));
+    .sort((a, b) => Number(b.product.slug === ANNOUNCED_MODEL) - Number(a.product.slug === ANNOUNCED_MODEL));
 
   // Les vêtements (avant les voiles) : une vignette par article, avec sa première photo.
   const clothesTiles: MarqueeTile[] = products
@@ -91,36 +85,22 @@ export default async function HomePage() {
   return (
     <main>
       <section className="border-b border-sand bg-paper">
-        {HOME_VIDEO ? (
-          // Les vidéos côte à côte, au format portrait (9:16) : la nouvelle d'abord, puis celle des voiles.
-          // Téléphone : deux demi-largeurs. Ordinateur : hauteur de l'écran moins la bande et le menu (115 px), annonce écrite à droite.
-          <div className="flex w-full flex-col md:h-[calc(100svh-115px)] md:min-h-[420px] md:flex-row md:items-center md:justify-center md:gap-10 md:bg-ivory md:px-8 md:py-5">
-            <div className={`grid gap-1 md:flex md:gap-3 ${HOME_VIDEO_BEFORE ? "grid-cols-2" : ""}`}>
-              {HOME_VIDEO_BEFORE ? (
-                <LoopVideo
-                  src={HOME_VIDEO_BEFORE}
-                  label="Vêtements Youna Collection en vidéo"
-                  className="aspect-[9/16] w-full md:w-[min(27vw,calc((100svh_-_155px)_*_0.5625))]"
-                />
-              ) : null}
-              <LoopVideo
-                src={HOME_VIDEO}
-                label="Voiles Youna Collection en mouvement"
-                className="aspect-[9/16] w-full md:w-[min(27vw,calc((100svh_-_155px)_*_0.5625))]"
-              />
-            </div>
-            {HOME_ANNOUNCEMENT ? (
-              <Link href={HOME_ANNOUNCEMENT.href} className="hidden min-w-0 max-w-lg flex-1 items-center justify-center md:flex">
-                <Image
-                  src={HOME_ANNOUNCEMENT.image}
-                  alt={HOME_ANNOUNCEMENT.alt}
-                  width={HOME_ANNOUNCEMENT.width}
-                  height={HOME_ANNOUNCEMENT.height}
-                  sizes="40vw"
-                  className="h-auto w-full max-w-lg"
-                />
-              </Link>
-            ) : null}
+        {HOME_VIDEOS.length ? (
+          // Une rangée par vidéo : la vidéo à gauche, son titre à droite, sur le fond beige.
+          // Téléphone : moitié vidéo, moitié titre. Ordinateur : vidéo à la hauteur de l'écran (moins la bande et le menu).
+          <div className="flex flex-col gap-1 bg-ivory md:gap-6 md:py-6">
+            {HOME_VIDEOS.map((video) => (
+              <div key={video.src} className="grid grid-cols-2 items-center md:flex md:justify-center md:gap-16 md:px-8">
+                <LoopVideo src={video.src} label={video.label} className="aspect-[9/16] w-full md:w-[min(32vw,calc((100svh_-_163px)_*_0.5625))]" />
+                <Link
+                  href={video.href}
+                  className="px-3 text-center font-titre text-[clamp(1.1rem,6vw,1.75rem)] leading-tight font-semibold tracking-wide text-balance text-ink md:w-[min(36vw,30rem)] md:px-0 md:text-left md:text-[min(5vw,3.75rem)]"
+                >
+                  {/* « PART 1 » reste sur la même ligne. */}
+                  {video.title.replace(/ (\d+)$/, " $1")}
+                </Link>
+              </div>
+            ))}
           </div>
         ) : hero ? (
           // Photos choisies par l'admin (Paramètres > Photos de la page d'accueil) : portrait 4:5 sur téléphone, paysage 16:9 sur ordinateur.
