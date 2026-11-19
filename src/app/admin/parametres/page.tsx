@@ -49,6 +49,7 @@ export default async function SettingsPage() {
           enabled={settings?.maintenance_enabled ?? false}
           title={settings?.maintenance_title ?? null}
           message={settings?.maintenance_message ?? null}
+          reopenAt={settings?.maintenance_reopen_at ?? null}
         />
       </section>
 

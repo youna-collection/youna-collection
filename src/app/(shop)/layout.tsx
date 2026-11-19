@@ -18,7 +18,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
   // Seul l'aperçu admin (/admin/apercu, réglé aussi au moment du gel) est rendu en direct et vérifie le rôle.
   const preview = (await draftMode()).isEnabled;
   const profile = preview ? await getCurrentProfile() : null;
-  if (profile?.role !== "admin") return <MaintenancePage title={status.title} message={status.message} />;
+  if (profile?.role !== "admin") return <MaintenancePage title={status.title} message={status.message} reopenAt={status.reopen_at ?? null} />;
 
   return (
     <ShopShell

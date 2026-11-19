@@ -192,6 +192,7 @@ export type ShopSettings = {
   maintenance_enabled: boolean;
   maintenance_title: string | null;
   maintenance_message: string | null;
+  maintenance_reopen_at: string | null;
   cart_reminders_enabled: boolean;
   cart_reminder_second: boolean;
   instagram_url: string | null;
@@ -210,7 +211,7 @@ export async function getShopSettings(): Promise<ShopSettings | null> {
   const { data } = await supabase
     .from("shop_settings")
     .select(
-      "legal_name, trade_name, legal_form, siret, vat_number, vat_mention, address_line1, address_line2, postal_code, city, country, email, phone, invoice_footer, maintenance_enabled, maintenance_title, maintenance_message, cart_reminders_enabled, cart_reminder_second, instagram_url, tiktok_url, snapchat_url, mediator_name, mediator_url, home_hero_path, home_hero_mobile_path, home_hero_visible, checkout_login_required",
+      "legal_name, trade_name, legal_form, siret, vat_number, vat_mention, address_line1, address_line2, postal_code, city, country, email, phone, invoice_footer, maintenance_enabled, maintenance_title, maintenance_message, maintenance_reopen_at, cart_reminders_enabled, cart_reminder_second, instagram_url, tiktok_url, snapchat_url, mediator_name, mediator_url, home_hero_path, home_hero_mobile_path, home_hero_visible, checkout_login_required",
     )
     .eq("id", 1)
     .maybeSingle<ShopSettings>();

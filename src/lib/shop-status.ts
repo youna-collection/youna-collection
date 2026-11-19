@@ -5,9 +5,9 @@ import { isSupabaseConfigured } from "./supabase/env";
 
 export const SHOP_STATUS_TAG = "shop-status";
 
-export type ShopStatus = { maintenance: boolean; title: string | null; message: string | null };
+export type ShopStatus = { maintenance: boolean; title: string | null; message: string | null; reopen_at?: string | null };
 
-const OPEN: ShopStatus = { maintenance: false, title: null, message: null };
+const OPEN: ShopStatus = { maintenance: false, title: null, message: null, reopen_at: null };
 
 /** La boutique est-elle gelée ? Lu au plus une fois par minute, et aussitôt après un changement dans l'admin. */
 export const getShopStatus = unstable_cache(

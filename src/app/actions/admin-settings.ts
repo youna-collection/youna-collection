@@ -94,13 +94,20 @@ const maintenanceSchema = z.object({
   enabled: z.boolean(),
   title: z.string().trim().max(120),
   message: z.string().trim().max(1000),
+  // Heure de réouverture annoncée (ISO, calculée dans le navigateur à l'heure française) ou vide.
+  reopenAt: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || !Number.isNaN(Date.parse(v)), "Date de réouverture invalide.")
+    .transform((v) => (v ? new Date(v).toISOString() : null))
+    .optional(),
 });
 
 /** Gèle ou rouvre la boutique. Effet immédiat sur tout le site. */
 export async function setMaintenance(input: z.input<typeof maintenanceSchema>): Promise<SettingsState> {
   await requireAdmin();
   const parsed = maintenanceSchema.safeParse(input);
-  if (!parsed.success) return { status: "error", message: "Texte trop long." };
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message === "Date de réouverture invalide." ? "Date de réouverture invalide." : "Texte trop long." };
   const supabase = await createClient();
   const { error } = await supabase
     .from("shop_settings")
@@ -108,6 +115,7 @@ export async function setMaintenance(input: z.input<typeof maintenanceSchema>): 
       maintenance_enabled: parsed.data.enabled,
       maintenance_title: parsed.data.title || null,
       maintenance_message: parsed.data.message || null,
+      ...(parsed.data.reopenAt !== undefined ? { maintenance_reopen_at: parsed.data.reopenAt } : {}),
     })
     .eq("id", 1);
   if (error) return { status: "error", message: "Le changement n'a pas pu être enregistré." };

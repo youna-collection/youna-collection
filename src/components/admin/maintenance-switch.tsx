@@ -6,10 +6,30 @@ import { setMaintenance } from "@/app/actions/admin-settings";
 
 const field = "min-h-11 w-full border border-sand bg-white px-3 text-base outline-none focus:border-ink";
 
-export function MaintenanceSwitch({ enabled, title, message }: { enabled: boolean; title: string | null; message: string | null }) {
+/** ISO → valeur d'un champ date-heure, à l'heure de ce navigateur (France). */
+function toLocalInput(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function MaintenanceSwitch({
+  enabled,
+  title,
+  message,
+  reopenAt,
+}: {
+  enabled: boolean;
+  title: string | null;
+  message: string | null;
+  reopenAt: string | null;
+}) {
   const router = useRouter();
   const [t, setT] = useState(title ?? "");
   const [m, setM] = useState(message ?? "");
+  const [r, setR] = useState(toLocalInput(reopenAt));
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -17,7 +37,9 @@ export function MaintenanceSwitch({ enabled, title, message }: { enabled: boolea
     if (next && !window.confirm("Geler la boutique ? Les clientes verront la page d'attente et ne pourront plus commander.")) return;
     setFeedback(null);
     startTransition(async () => {
-      const result = await setMaintenance({ enabled: next, title: t, message: m });
+      // Le navigateur convertit l'heure saisie (heure française) en heure universelle.
+      const reopen = r ? new Date(r).toISOString() : "";
+      const result = await setMaintenance({ enabled: next, title: t, message: m, reopenAt: reopen });
       setFeedback({ ok: result.status === "success", text: result.message ?? "" });
       router.refresh();
     });
@@ -44,6 +66,23 @@ export function MaintenanceSwitch({ enabled, title, message }: { enabled: boolea
         />
         <span className="text-xs text-muted">Par exemple : « Nouvelle collection le 15 décembre à 18 h. Suivez-nous sur Instagram ! »</span>
       </label>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="reopen-at" className="text-sm text-muted">
+          Réouverture prévue (compte à rebours)
+        </label>
+        <div className="flex gap-2">
+          <input id="reopen-at" type="datetime-local" value={r} onChange={(e) => setR(e.target.value)} className={field} />
+          {r ? (
+            <button type="button" onClick={() => setR("")} className="min-h-11 shrink-0 border border-sand px-3 text-sm">
+              Effacer
+            </button>
+          ) : null}
+        </div>
+        <span className="text-xs text-muted">
+          Laissez vide pour ne pas afficher de compte à rebours. La boutique ne rouvre pas toute seule : à l&apos;heure dite, cliquez sur « Rouvrir la
+          boutique ».
+        </span>
+      </div>
       <div className="flex flex-wrap gap-2">
         {enabled ? (
           <>
