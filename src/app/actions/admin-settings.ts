@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { draftMode } from "next/headers";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { SHOP_INFO_TAG } from "@/lib/shop-info";
@@ -111,6 +112,8 @@ export async function setMaintenance(input: z.input<typeof maintenanceSchema>): 
     .eq("id", 1);
   if (error) return { status: "error", message: "Le changement n'a pas pu être enregistré." };
   updateTag(SHOP_STATUS_TAG);
+  // L'admin continue de voir le vrai site pendant le gel (aperçu en direct, cookie de session).
+  if (parsed.data.enabled) (await draftMode()).enable();
   revalidatePath("/admin/parametres");
   revalidatePath("/admin");
   return {

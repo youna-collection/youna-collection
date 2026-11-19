@@ -44,7 +44,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle initialDark={dark} />
-            <Link href="/" className="text-xs tracking-widest text-muted uppercase hover:text-ink" target="_blank">
+            <Link href="/admin/apercu" prefetch={false} className="text-xs tracking-widest text-muted uppercase hover:text-ink" target="_blank">
               <span className="sm:hidden">Boutique ↗</span>
               <span className="hidden sm:inline">Voir la boutique ↗</span>
             </Link>

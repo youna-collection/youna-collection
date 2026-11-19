@@ -1,3 +1,4 @@
+import { draftMode } from "next/headers";
 import Link from "next/link";
 import { MaintenancePage } from "@/components/maintenance-page";
 import { ShopShell } from "@/components/shop-shell";
@@ -13,7 +14,10 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
   const status = await getShopStatus();
   if (!status.maintenance) return <ShopShell>{children}</ShopShell>;
 
-  const profile = await getCurrentProfile();
+  // Les pages de la boutique sont gardées en cache : on ne peut pas y lire la session (« qui regarde ? »).
+  // Seul l'aperçu admin (/admin/apercu, réglé aussi au moment du gel) est rendu en direct et vérifie le rôle.
+  const preview = (await draftMode()).isEnabled;
+  const profile = preview ? await getCurrentProfile() : null;
   if (profile?.role !== "admin") return <MaintenancePage title={status.title} message={status.message} />;
 
   return (
