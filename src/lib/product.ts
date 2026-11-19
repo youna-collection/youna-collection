@@ -43,8 +43,8 @@ export type Product = {
 
 export type Category = { id: string; slug: string; name: string; position: number };
 
-/** En dessous de ce nombre, la fiche affiche « Bientôt épuisé » (jamais le nombre exact). */
-export const LOW_STOCK = 3;
+/** À partir de ce nombre (et en dessous), la fiche affiche « Bientôt épuisé » (jamais le nombre exact) : seulement pour la dernière pièce. */
+export const LOW_STOCK = 1;
 
 export function isInStock(variant: Variant): boolean {
   return !variant.trackStock || variant.available > 0;
