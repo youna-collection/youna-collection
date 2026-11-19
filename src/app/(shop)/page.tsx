@@ -1,11 +1,10 @@
 import Image, { getImageProps } from "next/image";
 import Link from "next/link";
-import { ProductGrid } from "@/components/product-card";
-import { ColorMarquee } from "@/components/color-marquee";
+import { ColorMarquee, type MarqueeTile } from "@/components/color-marquee";
 import { LoopVideo } from "@/components/loop-video";
 import { getProducts, inCategory, productImageUrl } from "@/lib/catalog";
 import { getHomeHero } from "@/lib/shop-info";
-import { colorGroups, isInStock, type Product } from "@/lib/product";
+import { colorGroups, defaultVariant, imagesForVariant, isInStock, type Product } from "@/lib/product";
 
 export const revalidate = 300;
 
@@ -15,6 +14,9 @@ export const revalidate = 300;
  * sur le fond beige du site. Mettre null pour revenir aux photos.
  */
 const HOME_VIDEO: string | null = "/videos/accueil.mp4";
+
+/** Deuxième vidéo (envoyée par Youna, 720 × 1280), montrée juste avant et à côté de la vidéo des voiles. null pour l'enlever. */
+const HOME_VIDEO_BEFORE: string | null = "/videos/nouveautes.mp4";
 
 /**
  * Sur ordinateur, à droite de la vidéo : l'annonce écrite (image de Youna, police manuscrite, fond transparent).
@@ -28,12 +30,6 @@ const HOME_ANNOUNCEMENT: { image: string; alt: string; width: number; height: nu
   href: "/collections/voiles?modele=liquid-silk-signature",
   productSlug: "liquid-silk-signature",
 };
-
-/** Sous les voiles : les prochaines pièces, en aperçu (images envoyées par Youna). Vider la liste pour enlever la partie. */
-const COMING_SOON = [
-  { image: "/images/bientot-gilet-zippe.webp", alt: "Gilet zippé col montant en maille, coloris prune et gris anthracite", width: 1200, height: 1097 },
-  { image: "/images/bientot-pantalon-portefeuille.webp", alt: "Pantalon large à jupe portefeuille nouée, coloris beige et noir", width: 1200, height: 1280 },
-];
 
 /** Les couleurs d'un produit qui ont leur propre photo. */
 function colorTiles(product: Product) {
@@ -77,8 +73,17 @@ export default async function HomePage() {
     .filter((row) => row.tiles.length > 0)
     .sort((a, b) => Number(b.product.slug === HOME_ANNOUNCEMENT?.productSlug) - Number(a.product.slug === HOME_ANNOUNCEMENT?.productSlug));
 
-  // Puis les vêtements, et l'espace bouquets en dernier.
-  const clothes = products.filter((product) => inCategory(product, "jupes"));
+  // Les vêtements (avant les voiles) : une vignette par article, avec sa première photo.
+  const clothesTiles: MarqueeTile[] = products
+    .filter((product) => inCategory(product, "jupes"))
+    .flatMap((product) => {
+      const image = imagesForVariant(product, defaultVariant(product)?.id ?? null)[0];
+      return image
+        ? [{ key: product.id, href: `/produits/${product.slug}`, imageUrl: image.url, label: product.name, soldOut: !product.variants.some(isInStock) }]
+        : [];
+    });
+
+  // L'espace bouquets en dernier.
   const bouquets = products.filter((product) => inCategory(product, "bouquets"));
   const bouquetImage = bouquets.flatMap((product) => product.images)[0];
   const bouquetHref = bouquets.length === 1 ? `/produits/${bouquets[0].slug}` : "/collections/bouquets";
@@ -87,12 +92,25 @@ export default async function HomePage() {
     <main>
       <section className="border-b border-sand bg-paper">
         {HOME_VIDEO ? (
-          // Hauteur de l'écran moins la bande et le menu (100 px sur téléphone, 115 px sur ordinateur), jamais moins de 420 px.
-          // Téléphone : la vidéo seule, plein cadre. Ordinateur : vidéo à gauche, annonce écrite à droite, sur fond blanc.
-          <div className="h-[calc(100svh-100px)] min-h-[420px] w-full md:grid md:h-[calc(100svh-115px)] md:grid-cols-2 md:bg-ivory">
-            <LoopVideo src={HOME_VIDEO} centerOnWide label="Voiles Youna Collection en mouvement" className="size-full" />
+          // Les vidéos côte à côte, au format portrait (9:16) : la nouvelle d'abord, puis celle des voiles.
+          // Téléphone : deux demi-largeurs. Ordinateur : hauteur de l'écran moins la bande et le menu (115 px), annonce écrite à droite.
+          <div className="flex w-full flex-col md:h-[calc(100svh-115px)] md:min-h-[420px] md:flex-row md:items-center md:justify-center md:gap-10 md:bg-ivory md:px-8 md:py-5">
+            <div className={`grid gap-1 md:flex md:gap-3 ${HOME_VIDEO_BEFORE ? "grid-cols-2" : ""}`}>
+              {HOME_VIDEO_BEFORE ? (
+                <LoopVideo
+                  src={HOME_VIDEO_BEFORE}
+                  label="Vêtements Youna Collection en vidéo"
+                  className="aspect-[9/16] w-full md:w-[min(27vw,calc((100svh_-_155px)_*_0.5625))]"
+                />
+              ) : null}
+              <LoopVideo
+                src={HOME_VIDEO}
+                label="Voiles Youna Collection en mouvement"
+                className="aspect-[9/16] w-full md:w-[min(27vw,calc((100svh_-_155px)_*_0.5625))]"
+              />
+            </div>
             {HOME_ANNOUNCEMENT ? (
-              <Link href={HOME_ANNOUNCEMENT.href} className="hidden items-center justify-center px-10 md:flex lg:px-16">
+              <Link href={HOME_ANNOUNCEMENT.href} className="hidden min-w-0 max-w-lg flex-1 items-center justify-center md:flex">
                 <Image
                   src={HOME_ANNOUNCEMENT.image}
                   alt={HOME_ANNOUNCEMENT.alt}
@@ -112,7 +130,7 @@ export default async function HomePage() {
         ) : heroTiles.length >= 3 ? (
           <div className={`grid grid-cols-3 ${heroTiles.length >= 5 ? "md:grid-cols-5" : ""}`} aria-hidden>
             {heroTiles.map(({ color, image }, i) => (
-              <div key={color.slug}className={`relative aspect-[2/3] bg-photo ${i >= 3 ? "hidden md:block" : ""}`}>
+              <div key={color.slug} className={`relative aspect-[2/3] bg-photo ${i >= 3 ? "hidden md:block" : ""}`}>
                 <Image src={image!.url} alt="" fill priority sizes="(min-width: 768px) 20vw, 34vw" className="object-cover" />
               </div>
             ))}
@@ -138,6 +156,21 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {clothesTiles.length ? (
+        // Les vêtements d'abord, en bandeau qui défile, comme les voiles en dessous.
+        <section className="pt-16" aria-labelledby="vetements">
+          <div className="mx-auto mb-6 flex max-w-6xl items-end justify-between gap-4 px-4">
+            <h2 id="vetements" className="text-sm tracking-[0.3em] uppercase">
+              Vêtements
+            </h2>
+            <Link href="/collections/jupes" className="text-xs tracking-widest uppercase underline underline-offset-4">
+              Voir tout
+            </Link>
+          </div>
+          <ColorMarquee label="Vêtements" tiles={clothesTiles} />
+        </section>
+      ) : null}
+
       {voileRows.map(({ product, tiles: rowTiles }, i) => (
         <section key={product.id} className="pt-16" aria-labelledby={`modele-${product.slug}`}>
           <div className="mx-auto mb-6 flex max-w-6xl items-end justify-between gap-4 px-4">
@@ -156,7 +189,7 @@ export default async function HomePage() {
           </div>
           <ColorMarquee
             label={`Couleurs ${product.name}`}
-            reverse={i % 2 === 1}
+            reverse={(i + (clothesTiles.length ? 1 : 0)) % 2 === 1}
             tiles={rowTiles.map(({ color, image }) => ({
               key: color.slug,
               href: `/produits/${product.slug}?couleur=${color.slug}`,
@@ -167,43 +200,6 @@ export default async function HomePage() {
           />
         </section>
       ))}
-
-      {COMING_SOON.length ? (
-        <section className="mx-auto max-w-6xl px-4 pt-16" aria-labelledby="bientot">
-          <h2 id="bientot" className="mb-8 text-center text-sm tracking-[0.3em] uppercase">
-            Bientôt disponible
-          </h2>
-          <ul className="grid gap-6 sm:grid-cols-2">
-            {COMING_SOON.map((item) => (
-              <li key={item.image} className="flex items-center justify-center">
-                {/* Images au fond beige du site (#f6f1e9), préparées ainsi pour se fondre dans la page. */}
-                <Image
-                  src={item.image}
-                  alt={item.alt}
-                  width={item.width}
-                  height={item.height}
-                  sizes="(min-width: 640px) 50vw, 100vw"
-                  className="h-auto w-full max-w-lg"
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {clothes.length ? (
-        <section className="mx-auto max-w-6xl px-4 pt-16" aria-labelledby="vetements">
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <h2 id="vetements" className="text-sm tracking-[0.3em] uppercase">
-              Vêtements
-            </h2>
-            <Link href="/collections/jupes" className="text-xs tracking-widest uppercase underline underline-offset-4">
-              Voir tout
-            </Link>
-          </div>
-          <ProductGrid products={clothes} />
-        </section>
-      ) : null}
 
       <section className="mt-16 bg-paper" aria-labelledby="bouquets">
         <div className={`mx-auto grid max-w-5xl items-center gap-10 px-4 py-14 md:gap-16 md:py-20 ${bouquetImage ? "md:grid-cols-2" : ""}`}>
