@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isReopenDue } from "@/lib/maintenance-text";
 import Link from "next/link";
 import { saveShopSettings, saveSocialAndMediator } from "@/app/actions/admin-settings";
 import { ActionForm } from "@/components/action-form";
@@ -46,7 +47,8 @@ export default async function SettingsPage() {
       <section id="gel" className="flex scroll-mt-24 flex-col gap-4 border border-sand bg-ivory p-4">
         <h2 className="text-lg">Gel de la boutique</h2>
         <MaintenanceSwitch
-          enabled={settings?.maintenance_enabled ?? false}
+          // Heure de réouverture passée : la boutique est déjà ouverte pour les clientes.
+          enabled={(settings?.maintenance_enabled ?? false) && !isReopenDue(settings?.maintenance_reopen_at)}
           title={settings?.maintenance_title ?? null}
           message={settings?.maintenance_message ?? null}
           reopenAt={settings?.maintenance_reopen_at ?? null}

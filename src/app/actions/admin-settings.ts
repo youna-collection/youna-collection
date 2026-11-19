@@ -108,25 +108,34 @@ export async function setMaintenance(input: z.input<typeof maintenanceSchema>): 
   await requireAdmin();
   const parsed = maintenanceSchema.safeParse(input);
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message === "Date de réouverture invalide." ? "Date de réouverture invalide." : "Texte trop long." };
+  const { enabled, reopenAt } = parsed.data;
+  // Une heure déjà passée rouvrirait la boutique aussitôt gelée.
+  if (enabled && reopenAt && Date.parse(reopenAt) <= Date.now() + 60_000)
+    return { status: "error", message: "L'heure de réouverture doit être dans le futur (ou laissez la case vide)." };
   const supabase = await createClient();
   const { error } = await supabase
     .from("shop_settings")
     .update({
-      maintenance_enabled: parsed.data.enabled,
+      maintenance_enabled: enabled,
       maintenance_title: parsed.data.title || null,
       maintenance_message: parsed.data.message || null,
-      ...(parsed.data.reopenAt !== undefined ? { maintenance_reopen_at: parsed.data.reopenAt } : {}),
+      // Boutique rouverte à la main : le compte à rebours n'a plus lieu d'être.
+      ...(!enabled ? { maintenance_reopen_at: null } : reopenAt !== undefined ? { maintenance_reopen_at: reopenAt } : {}),
     })
     .eq("id", 1);
   if (error) return { status: "error", message: "Le changement n'a pas pu être enregistré." };
   updateTag(SHOP_STATUS_TAG);
   // L'admin continue de voir le vrai site pendant le gel (aperçu en direct, cookie de session).
-  if (parsed.data.enabled) (await draftMode()).enable();
+  if (enabled) (await draftMode()).enable();
   revalidatePath("/admin/parametres");
   revalidatePath("/admin");
   return {
     status: "success",
-    message: parsed.data.enabled ? "La boutique est gelée : les clientes voient la page d'attente." : "La boutique est ouverte.",
+    message: !enabled
+      ? "La boutique est ouverte."
+      : reopenAt
+        ? "La boutique est gelée. Elle rouvrira toute seule à l'heure prévue."
+        : "La boutique est gelée : les clientes voient la page d'attente.",
   };
 }
 

@@ -20,9 +20,9 @@ function split(remaining: number) {
 
 /**
  * Compte à rebours jusqu'à la réouverture. Calculé seulement dans le navigateur (la page est en cache).
- * Arrivé à zéro, la page se recharge toute seule chaque minute pour montrer la boutique dès qu'elle rouvre.
+ * Arrivé à zéro, la boutique s'ouvre toute seule et la page se recharge pour l'afficher.
  */
-export function Countdown({ target }: { target: string }) {
+export function Countdown({ target, preview = false }: { target: string; preview?: boolean }) {
   const end = Date.parse(target);
   const [now, setNow] = useState<number | null>(null);
 
@@ -38,10 +38,34 @@ export function Countdown({ target }: { target: string }) {
 
   const done = now !== null && now >= end;
   useEffect(() => {
-    if (!done) return;
-    const reload = setInterval(() => window.location.reload(), 60_000);
-    return () => clearInterval(reload);
-  }, [done]);
+    if (!done || preview) return;
+    // L'heure est passée : on demande l'ouverture, puis on recharge pour afficher la boutique.
+    // Pas encore ouverte (horloge du téléphone en avance, pas de réseau…) : on réessaie chaque minute.
+    let cancelled = false;
+    const open = () =>
+      fetch("/api/boutique/ouverture", { method: "POST", cache: "no-store" })
+        .then((response) => (response.ok ? (response.json() as Promise<{ open?: boolean }>) : null))
+        .catch(() => null)
+        .then((result) => {
+          if (cancelled || !result?.open) return;
+          // Garde-fou : jamais deux rechargements en moins de 20 s (si une ancienne page traîne en cache).
+          try {
+            const last = Number(sessionStorage.getItem("youna-reopen-reload") ?? 0);
+            if (Date.now() - last < 20_000) return;
+            sessionStorage.setItem("youna-reopen-reload", String(Date.now()));
+          } catch {
+            // Stockage indisponible : on recharge quand même (le prochain essai attend une minute).
+          }
+          window.location.reload();
+        });
+    const first = setTimeout(open, Math.random() * 1500);
+    const retry = setInterval(open, 60_000);
+    return () => {
+      cancelled = true;
+      clearTimeout(first);
+      clearInterval(retry);
+    };
+  }, [done, preview]);
 
   if (done) {
     return (

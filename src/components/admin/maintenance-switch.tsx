@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setMaintenance } from "@/app/actions/admin-settings";
+import { MaintenancePage } from "@/components/maintenance-page";
 
 const field = "min-h-11 w-full border border-sand bg-white px-3 text-base outline-none focus:border-ink";
 
@@ -48,7 +49,11 @@ export function MaintenanceSwitch({
   return (
     <div className="flex flex-col gap-4">
       <p className={`border p-3 text-sm ${enabled ? "border-danger text-danger" : "border-success text-success"}`} role="status">
-        {enabled ? "La boutique est gelée. Les clientes voient la page d'attente." : "La boutique est ouverte."}
+        {enabled
+          ? reopenAt
+            ? "La boutique est gelée. Elle rouvrira toute seule à l'heure prévue."
+            : "La boutique est gelée. Les clientes voient la page d'attente."
+          : "La boutique est ouverte."}
       </p>
       <label className="flex flex-col gap-1">
         <span className="text-sm text-muted">Titre de la page d&apos;attente</span>
@@ -79,8 +84,8 @@ export function MaintenanceSwitch({
           ) : null}
         </div>
         <span className="text-xs text-muted">
-          Laissez vide pour ne pas afficher de compte à rebours. La boutique ne rouvre pas toute seule : à l&apos;heure dite, cliquez sur « Rouvrir la
-          boutique ».
+          À l&apos;heure dite, la boutique rouvre toute seule. Laissez vide pour ne pas afficher de compte à rebours (il faudra alors rouvrir à la
+          main).
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -103,6 +108,12 @@ export function MaintenanceSwitch({
         Pendant le gel : vous voyez toujours le site (avec un bandeau). Les clientes peuvent encore se connecter et suivre leurs commandes. Les commandes déjà
         payées continuent d&apos;arriver normalement.
       </p>
+      <figure className="flex flex-col gap-2">
+        <figcaption className="text-sm text-muted">Aperçu : ce que voient les clientes (se met à jour pendant que vous écrivez)</figcaption>
+        <div className="shop-light pointer-events-none overflow-hidden border border-sand select-none" inert>
+          <MaintenancePage preview title={t.trim() || null} message={m.trim() || null} reopenAt={r ? new Date(r).toISOString() : null} />
+        </div>
+      </figure>
       {feedback ? (
         <p role={feedback.ok ? "status" : "alert"} className={`text-sm ${feedback.ok ? "text-success" : "text-danger"}`}>
           {feedback.text}

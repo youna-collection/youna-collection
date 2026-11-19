@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MAINTENANCE_MESSAGE } from "@/lib/shop-status";
+import { MAINTENANCE_MESSAGE } from "@/lib/maintenance-text";
 import { Countdown } from "./countdown";
 import { LogoMark } from "./logo";
 
@@ -13,11 +13,26 @@ const reopenFormat = new Intl.DateTimeFormat("fr-FR", {
 });
 
 /** Page d'attente quand la boutique est gelée : une vraie page d'accueil, pas une erreur. */
-export function MaintenancePage({ title, message, reopenAt }: { title: string | null; message: string | null; reopenAt?: string | null }) {
+export function MaintenancePage({
+  title,
+  message,
+  reopenAt,
+  preview = false,
+}: {
+  title: string | null;
+  message: string | null;
+  reopenAt?: string | null;
+  /** Aperçu dans l'admin : pas de balise de page, et le compte à rebours n'ouvre rien. */
+  preview?: boolean;
+}) {
   const reopen = reopenAt && !Number.isNaN(Date.parse(reopenAt)) ? reopenAt : null;
+  const Root = preview ? "div" : "main";
   return (
-    <main id="contenu" className="flex flex-1 flex-col items-center justify-center gap-8 bg-ivory px-6 py-20 text-center">
-      <meta name="robots" content="noindex" />
+    <Root
+      id={preview ? undefined : "contenu"}
+      className={`flex flex-1 flex-col items-center justify-center gap-8 bg-ivory px-6 text-center text-ink ${preview ? "py-12" : "py-20"}`}
+    >
+      {preview ? null : <meta name="robots" content="noindex" />}
       <p>
         <LogoMark className="h-16" />
         <span className="sr-only">Youna Collection</span>
@@ -28,7 +43,7 @@ export function MaintenancePage({ title, message, reopenAt }: { title: string | 
       </div>
       {reopen ? (
         <div className="flex flex-col items-center gap-3">
-          <Countdown target={reopen} />
+          <Countdown target={reopen} preview={preview} />
           <p className="text-xs tracking-[0.2em] text-muted uppercase">
             Ouverture le {reopenFormat.format(new Date(reopen)).replace(":", " h ").replace(/ h 00$/, " h")}
           </p>
@@ -43,6 +58,6 @@ export function MaintenancePage({ title, message, reopenAt }: { title: string | 
           Suivre ma commande
         </Link>
       </nav>
-    </main>
+    </Root>
   );
 }
